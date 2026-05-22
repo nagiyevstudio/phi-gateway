@@ -1,0 +1,1305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PHI Gateway - Admin Dashboard</title>
+  <!-- Google Fonts: Inter & Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            outfit: ['Outfit', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#f0f3ff',
+              100: '#e1e7ff',
+              200: '#ccd5ff',
+              300: '#a3b3ff',
+              400: '#7a8cff',
+              500: '#5c66fe',
+              600: '#4846f9',
+              700: '#3c35e3',
+              800: '#322cb9',
+              900: '#2d2a93',
+            },
+            darkbg: '#0a0b10',
+            glass: 'rgba(17, 18, 27, 0.65)',
+            borderglass: 'rgba(255, 255, 255, 0.08)',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background: radial-gradient(circle at 50% 0%, #1e1b4b 0%, #0a0b10 60%);
+      color: #f3f4f6;
+      font-family: 'Inter', sans-serif;
+    }
+    .glass-panel {
+      background: rgba(13, 14, 22, 0.75);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    }
+    .glass-input {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #f3f4f6;
+      transition: all 0.2s ease-in-out;
+    }
+    .glass-input:focus {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: #5c66fe;
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(92, 102, 254, 0.2);
+    }
+    .nav-btn.active {
+      background: rgba(92, 102, 254, 0.15);
+      border-color: rgba(92, 102, 254, 0.4);
+      color: #a3b3ff;
+    }
+    /* Hide scrollbars but keep functionality */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased">
+
+  <!-- 1. Authentication Overlay -->
+  <div id="authOverlay" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md transition-opacity duration-300">
+    <div class="glass-panel w-full max-w-md p-8 rounded-2xl text-center space-y-6 mx-4">
+      <div class="inline-flex p-3 bg-brand-500/10 rounded-full border border-brand-500/30 text-brand-400 mb-2">
+        <i data-lucide="shield-alert" class="w-8 h-8"></i>
+      </div>
+      <h2 class="text-2xl font-outfit font-bold tracking-tight">PHI Gateway Login</h2>
+      <p class="text-sm text-gray-400">Please provide your PHI client bearer key to manage the gateway configuration.</p>
+      
+      <div class="space-y-4">
+        <input type="password" id="authKeyInput" placeholder="phi_..." class="glass-input w-full px-4 py-3 rounded-lg text-center font-mono placeholder:text-gray-600">
+        <button id="authBtn" class="w-full bg-brand-600 hover:bg-brand-500 text-white font-medium py-3 rounded-lg transition duration-150 flex items-center justify-center gap-2">
+          <span>Authorize</span>
+          <i data-lucide="arrow-right" class="w-4 h-4"></i>
+        </button>
+      </div>
+      <p id="authError" class="text-xs text-red-400 hidden">Invalid or inactive bearer token.</p>
+    </div>
+  </div>
+
+  <!-- 2. Main Dashboard Layout (Hidden until authorized) -->
+  <div id="mainDashboard" class="flex-1 flex flex-col md:flex-row hidden min-h-screen">
+    
+    <!-- Sidebar Navigation -->
+    <aside class="w-full md:w-64 glass-panel border-r border-t-0 border-b-0 border-l-0 flex flex-col">
+      <div class="p-6 border-b border-white/5 flex items-center gap-3">
+        <div class="p-2 bg-brand-500/10 rounded-lg text-brand-400 border border-brand-500/20">
+          <i data-lucide="cpu" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <h1 class="font-outfit font-bold text-lg tracking-wide leading-none">PHI Gateway</h1>
+          <span class="text-[10px] text-gray-500 font-mono">v1.2.0-vps</span>
+        </div>
+      </div>
+
+      <nav class="flex-1 p-4 space-y-1.5 overflow-y-auto no-scrollbar">
+        <button onclick="switchTab('dashboard')" id="tabBtn-dashboard" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-lg border border-transparent hover:bg-white/5 text-gray-300 hover:text-white transition duration-150 text-sm font-medium">
+          <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+          <span>Dashboard</span>
+        </button>
+        <button onclick="switchTab('aliases')" id="tabBtn-aliases" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-lg border border-transparent hover:bg-white/5 text-gray-300 hover:text-white transition duration-150 text-sm font-medium">
+          <i data-lucide="git-merge" class="w-4 h-4"></i>
+          <span>Model Aliases</span>
+        </button>
+        <button onclick="switchTab('providers')" id="tabBtn-providers" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-lg border border-transparent hover:bg-white/5 text-gray-300 hover:text-white transition duration-150 text-sm font-medium">
+          <i data-lucide="server" class="w-4 h-4"></i>
+          <span>Providers & Models</span>
+        </button>
+        <button onclick="switchTab('env')" id="tabBtn-env" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-lg border border-transparent hover:bg-white/5 text-gray-300 hover:text-white transition duration-150 text-sm font-medium">
+          <i data-lucide="key" class="w-4 h-4"></i>
+          <span>Upstream Keys</span>
+        </button>
+        <button onclick="switchTab('clients')" id="tabBtn-clients" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-lg border border-transparent hover:bg-white/5 text-gray-300 hover:text-white transition duration-150 text-sm font-medium">
+          <i data-lucide="users" class="w-4 h-4"></i>
+          <span>Clients & Tokens</span>
+        </button>
+      </nav>
+
+      <div class="p-4 border-t border-white/5 space-y-3">
+        <div class="flex items-center justify-between text-xs text-gray-400 px-2">
+          <span>Server Uptime:</span>
+          <span id="vpsUptime" class="font-mono text-gray-300">00:00:00</span>
+        </div>
+        <button id="logoutBtn" class="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-white/10 hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400 transition duration-150 text-xs font-semibold">
+          <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+          <span>Log Out</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content Panel -->
+    <main class="flex-1 p-6 md:p-8 overflow-y-auto space-y-6">
+      
+      <!-- Top Header Panel -->
+      <header class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-5">
+        <div>
+          <h2 id="tabTitle" class="text-3xl font-outfit font-bold tracking-tight">Dashboard Overview</h2>
+          <p id="tabDesc" class="text-sm text-gray-400">Monitoring real-time completions activity and gateway statuses.</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="px-3 py-1.5 bg-green-500/10 border border-green-500/20 text-green-400 text-xs rounded-full flex items-center gap-1.5 font-medium">
+            <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+            <span>Gateway Online</span>
+          </div>
+          <button onclick="refreshData()" class="p-2.5 glass-panel rounded-lg hover:bg-white/5 text-gray-400 hover:text-white transition duration-150">
+            <i data-lucide="rotate-cw" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </header>
+
+      <!-- Tabs content container -->
+      <div id="tabContainer" class="space-y-6">
+        
+        <!-- Tab 1: Dashboard -->
+        <div id="tab-dashboard" class="tab-view space-y-6">
+          <!-- Stats Grid -->
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="glass-panel p-5 rounded-xl space-y-2">
+              <div class="text-gray-400 text-xs font-medium">Model Aliases</div>
+              <div id="statAliases" class="text-3xl font-outfit font-bold">0</div>
+            </div>
+            <div class="glass-panel p-5 rounded-xl space-y-2">
+              <div class="text-gray-400 text-xs font-medium">Upstream Models</div>
+              <div id="statModels" class="text-3xl font-outfit font-bold">0</div>
+            </div>
+            <div class="glass-panel p-5 rounded-xl space-y-2">
+              <div class="text-gray-400 text-xs font-medium">Active Clients</div>
+              <div id="statClients" class="text-3xl font-outfit font-bold">0</div>
+            </div>
+            <div class="glass-panel p-5 rounded-xl space-y-2">
+              <div class="text-gray-400 text-xs font-medium">Heap Used</div>
+              <div id="statMemory" class="text-3xl font-outfit font-bold">0 MB</div>
+            </div>
+          </div>
+
+          <!-- Live Activity Feed -->
+          <div class="glass-panel rounded-xl overflow-hidden">
+            <div class="px-6 py-4 border-b border-white/5 flex items-center justify-between">
+              <h3 class="font-outfit font-bold text-lg flex items-center gap-2">
+                <i data-lucide="activity" class="w-5 h-5 text-brand-400"></i>
+                <span>Live Completions Feed</span>
+              </h3>
+              <span class="text-xs text-gray-500 font-mono">Last 100 requests</span>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="border-b border-white/5 text-[10px] uppercase tracking-wider text-gray-500 bg-white/[0.01]">
+                    <th class="px-6 py-3">Timestamp</th>
+                    <th class="px-6 py-3">Client</th>
+                    <th class="px-6 py-3">Alias</th>
+                    <th class="px-6 py-3">Upstream Model</th>
+                    <th class="px-6 py-3">Status</th>
+                    <th class="px-6 py-3 text-right">Latency</th>
+                  </tr>
+                </thead>
+                <tbody id="logsTableBody" class="text-sm divide-y divide-white/5 font-mono">
+                  <!-- Dynamically populated -->
+                  <tr>
+                    <td colspan="6" class="px-6 py-8 text-center text-gray-500">No requests processed yet.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 2: Model Aliases -->
+        <div id="tab-aliases" class="tab-view space-y-6 hidden">
+          <div class="glass-panel p-6 rounded-xl space-y-6">
+            <div class="flex items-center justify-between border-b border-white/5 pb-4">
+              <h3 class="font-outfit font-bold text-lg">Manage Routing Aliases</h3>
+              <button onclick="saveAliasRouting()" class="bg-brand-600 hover:bg-brand-500 px-4 py-2 rounded-lg font-medium text-sm transition duration-150 flex items-center gap-2">
+                <i data-lucide="save" class="w-4 h-4"></i>
+                <span>Save Routing Configuration</span>
+              </button>
+            </div>
+            
+            <div id="aliasesContainer" class="space-y-6">
+              <!-- Dynamically populated aliases editors -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 3: Providers & Models -->
+        <div id="tab-providers" class="tab-view space-y-6 hidden">
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Providers Toggle List -->
+            <div class="glass-panel p-6 rounded-xl space-y-6 lg:col-span-1">
+              <div class="border-b border-white/5 pb-4 flex items-center justify-between">
+                <h3 class="font-outfit font-bold text-lg">AI Providers</h3>
+                <button onclick="saveProviders()" class="bg-brand-600 hover:bg-brand-500 px-3 py-1.5 rounded-lg font-medium text-xs transition duration-150">
+                  Save Toggles
+                </button>
+              </div>
+              <div id="providersList" class="space-y-4">
+                <!-- Dynamically populated providers list -->
+              </div>
+            </div>
+
+            <!-- Models Inventory List -->
+            <div class="glass-panel p-6 rounded-xl space-y-6 lg:col-span-2">
+              <div class="border-b border-white/5 pb-4 flex items-center justify-between">
+                <h3 class="font-outfit font-bold text-lg">Model Inventory</h3>
+                <button onclick="openAddModelModal()" class="bg-brand-600 hover:bg-brand-500 px-4 py-2 rounded-lg font-medium text-sm transition duration-150 flex items-center gap-2">
+                  <i data-lucide="plus" class="w-4 h-4"></i>
+                  <span>Add Upstream Model</span>
+                </button>
+              </div>
+              
+              <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-sm">
+                  <thead>
+                    <tr class="border-b border-white/5 text-gray-500 text-xs font-semibold">
+                      <th class="py-3 px-4">Key</th>
+                      <th class="py-3 px-4">Provider</th>
+                      <th class="py-3 px-4">API Model ID</th>
+                      <th class="py-3 px-4">Capabilities</th>
+                      <th class="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="modelsTableBody" class="divide-y divide-white/5 font-mono">
+                    <!-- Dynamically populated models table -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 4: API Keys -->
+        <div id="tab-env" class="tab-view space-y-6 hidden">
+          <div class="glass-panel p-6 rounded-xl max-w-2xl space-y-6">
+            <div class="border-b border-white/5 pb-4">
+              <h3 class="font-outfit font-bold text-lg">Upstream Provider API Keys</h3>
+              <p class="text-xs text-gray-400">Save keys to write them back to your Environment File. Updates apply in memory immediately.</p>
+            </div>
+            
+            <form id="envForm" class="space-y-4">
+              <div class="space-y-1">
+                <label class="text-xs text-gray-400 font-medium flex items-center justify-between">
+                  <span>OPENROUTER_API_KEY</span>
+                  <span id="envStatus-OPENROUTER_API_KEY" class="text-[10px]">Checking...</span>
+                </label>
+                <input type="password" name="OPENROUTER_API_KEY" class="glass-input w-full px-4 py-2.5 rounded-lg font-mono text-sm" placeholder="Keep unchanged / empty to delete">
+              </div>
+
+              <div class="space-y-1">
+                <label class="text-xs text-gray-400 font-medium flex items-center justify-between">
+                  <span>OPENAI_API_KEY</span>
+                  <span id="envStatus-OPENAI_API_KEY" class="text-[10px]">Checking...</span>
+                </label>
+                <input type="password" name="OPENAI_API_KEY" class="glass-input w-full px-4 py-2.5 rounded-lg font-mono text-sm" placeholder="Keep unchanged / empty to delete">
+              </div>
+
+              <div class="space-y-1">
+                <label class="text-xs text-gray-400 font-medium flex items-center justify-between">
+                  <span>GEMINI_API_KEY</span>
+                  <span id="envStatus-GEMINI_API_KEY" class="text-[10px]">Checking...</span>
+                </label>
+                <input type="password" name="GEMINI_API_KEY" class="glass-input w-full px-4 py-2.5 rounded-lg font-mono text-sm" placeholder="Keep unchanged / empty to delete">
+              </div>
+
+              <div class="space-y-1">
+                <label class="text-xs text-gray-400 font-medium flex items-center justify-between">
+                  <span>ZAI_API_KEY</span>
+                  <span id="envStatus-ZAI_API_KEY" class="text-[10px]">Checking...</span>
+                </label>
+                <input type="password" name="ZAI_API_KEY" class="glass-input w-full px-4 py-2.5 rounded-lg font-mono text-sm" placeholder="Keep unchanged / empty to delete">
+              </div>
+
+              <div class="space-y-1">
+                <label class="text-xs text-gray-400 font-medium flex items-center justify-between">
+                  <span>MISTRAL_API_KEY</span>
+                  <span id="envStatus-MISTRAL_API_KEY" class="text-[10px]">Checking...</span>
+                </label>
+                <input type="password" name="MISTRAL_API_KEY" class="glass-input w-full px-4 py-2.5 rounded-lg font-mono text-sm" placeholder="Keep unchanged / empty to delete">
+              </div>
+
+              <button type="submit" class="bg-brand-600 hover:bg-brand-500 w-full py-3 rounded-lg font-medium text-sm transition duration-150 flex items-center justify-center gap-2">
+                <i data-lucide="save" class="w-4 h-4"></i>
+                <span>Save API Keys</span>
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Tab 5: Clients & Tokens -->
+        <div id="tab-clients" class="tab-view space-y-6 hidden">
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- Generate Client Token -->
+            <div class="glass-panel p-6 rounded-xl space-y-6 lg:col-span-1">
+              <div class="border-b border-white/5 pb-4">
+                <h3 class="font-outfit font-bold text-lg">Generate Client Token</h3>
+                <p class="text-xs text-gray-400">Create a secure client key for backend integrations.</p>
+              </div>
+
+              <form id="generateClientForm" class="space-y-4">
+                <div class="space-y-1">
+                  <label class="text-xs text-gray-400 font-medium">Client ID (Unique slug)</label>
+                  <input type="text" id="clientIdInput" required class="glass-input w-full px-3 py-2 rounded-lg text-sm" placeholder="e.g. staging-backend">
+                </div>
+
+                <div class="space-y-1">
+                  <label class="text-xs text-gray-400 font-medium">Label (Friendly name)</label>
+                  <input type="text" id="clientLabelInput" required class="glass-input w-full px-3 py-2 rounded-lg text-sm" placeholder="e.g. Staging Env Portal">
+                </div>
+
+                <div class="space-y-1.5">
+                  <label class="text-xs text-gray-400 font-medium block">Allowed Model Aliases</label>
+                  <div id="clientAliasesChecks" class="space-y-1.5 max-h-40 overflow-y-auto no-scrollbar">
+                    <!-- Populated dynamically -->
+                  </div>
+                </div>
+
+                <button type="submit" class="w-full bg-brand-600 hover:bg-brand-500 py-2.5 rounded-lg text-sm font-semibold transition duration-150 flex items-center justify-center gap-2">
+                  <i data-lucide="key-round" class="w-4 h-4"></i>
+                  <span>Generate Key</span>
+                </button>
+              </form>
+            </div>
+
+            <!-- Clients List -->
+            <div class="glass-panel p-6 rounded-xl space-y-6 lg:col-span-2">
+              <div class="border-b border-white/5 pb-4">
+                <h3 class="font-outfit font-bold text-lg">Registered Clients</h3>
+              </div>
+
+              <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-sm">
+                  <thead>
+                    <tr class="border-b border-white/5 text-gray-500 text-xs font-semibold">
+                      <th class="py-3 px-4">Client ID</th>
+                      <th class="py-3 px-4">Label</th>
+                      <th class="py-3 px-4 font-mono">Hint</th>
+                      <th class="py-3 px-4">Scope</th>
+                      <th class="py-3 px-4">Status</th>
+                      <th class="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="clientsTableBody" class="divide-y divide-white/5">
+                    <!-- Populated dynamically -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+    </main>
+
+  </div>
+
+  <!-- 3. Add Model Modal -->
+  <div id="addModelModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm hidden">
+    <div class="glass-panel w-full max-w-md p-6 rounded-2xl space-y-6 mx-4">
+      <h3 class="text-xl font-outfit font-bold" id="addModelModalTitle">Add Upstream Model</h3>
+      <form id="addModelForm" class="space-y-4">
+        <div class="space-y-1">
+          <label class="text-xs text-gray-400 font-medium">Model Identifier Key (must be unique)</label>
+          <input type="text" id="modelKeyInput" required class="glass-input w-full px-3 py-2 rounded-lg text-sm" placeholder="e.g. openrouter_mistral_large">
+        </div>
+        <div class="space-y-1">
+          <label class="text-xs text-gray-400 font-medium">Provider</label>
+          <select id="modelProviderSelect" required class="glass-input w-full px-3 py-2 rounded-lg text-sm bg-darkbg">
+            <!-- Populated dynamically -->
+          </select>
+        </div>
+        <div class="space-y-1">
+          <label class="text-xs text-gray-400 font-medium">API Model ID (Exact ID on provider platform)</label>
+          <input type="text" id="modelApiIdInput" required class="glass-input w-full px-3 py-2 rounded-lg text-sm" placeholder="e.g. mistralai/mistral-large-latest">
+        </div>
+        <div class="space-y-1.5">
+          <label class="text-xs text-gray-400 font-medium block">Capabilities</label>
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <label class="flex items-center gap-2"><input type="checkbox" value="text_input"> text_input</label>
+            <label class="flex items-center gap-2"><input type="checkbox" value="text_output"> text_output</label>
+            <label class="flex items-center gap-2"><input type="checkbox" value="image_input"> image_input</label>
+            <label class="flex items-center gap-2"><input type="checkbox" value="audio_input"> audio_input</label>
+            <label class="flex items-center gap-2"><input type="checkbox" value="pdf_input"> pdf_input</label>
+            <label class="flex items-center gap-2"><input type="checkbox" value="structured_output"> structured_output</label>
+            <label class="flex items-center gap-2"><input type="checkbox" value="transcription"> transcription</label>
+            <label class="flex items-center gap-2"><input type="checkbox" value="fast"> fast</label>
+          </div>
+        </div>
+        <div class="flex gap-3 justify-end pt-2">
+          <button type="button" onclick="closeAddModelModal()" class="px-4 py-2 border border-white/10 hover:bg-white/5 rounded-lg text-sm font-semibold transition">Cancel</button>
+          <button type="submit" id="modelSubmitBtn" class="px-4 py-2 bg-brand-600 hover:bg-brand-500 rounded-lg text-sm font-semibold transition">Add Model</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 4. One-Time Client Key Result Modal -->
+  <div id="keyResultModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md hidden">
+    <div class="glass-panel w-full max-w-lg p-6 rounded-2xl space-y-6 mx-4 text-center">
+      <div class="inline-flex p-3 bg-green-500/10 rounded-full border border-green-500/20 text-green-400">
+        <i data-lucide="check-circle" class="w-8 h-8"></i>
+      </div>
+      <h3 class="text-xl font-outfit font-bold">Client Token Generated Successfully</h3>
+      <p class="text-xs text-gray-400 px-4">Copy this token now! It will not be shown again. Stored in config as an scrypt hash.</p>
+      
+      <div class="flex items-center gap-2 bg-black/40 border border-white/10 p-3 rounded-lg font-mono text-sm text-brand-300 select-all justify-between">
+        <span id="rawTokenDisplay" class="truncate max-w-md">phi_...</span>
+        <button onclick="copyGeneratedToken()" class="p-2 border border-white/10 hover:bg-white/5 rounded-lg text-gray-400 hover:text-white transition">
+          <i data-lucide="copy" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <button onclick="closeKeyResultModal()" class="w-full bg-brand-600 hover:bg-brand-500 py-2.5 rounded-lg text-sm font-semibold transition">
+        Done
+      </button>
+    </div>
+  </div>
+
+  <!-- 5. Edit Client Modal -->
+  <div id="editClientModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm hidden">
+    <div class="glass-panel w-full max-w-md p-6 rounded-2xl space-y-6 mx-4">
+      <h3 class="text-xl font-outfit font-bold">Edit Client Config</h3>
+      <form id="editClientForm" class="space-y-4">
+        <input type="hidden" id="editClientIdHidden">
+        <div class="space-y-1">
+          <label class="text-xs text-gray-400 font-medium">Client ID</label>
+          <input type="text" id="editClientIdDisplay" disabled class="glass-input w-full px-3 py-2 rounded-lg text-sm bg-darkbg text-gray-500">
+        </div>
+        <div class="space-y-1">
+          <label class="text-xs text-gray-400 font-medium">Label (Friendly name)</label>
+          <input type="text" id="editClientLabelInput" required class="glass-input w-full px-3 py-2 rounded-lg text-sm">
+        </div>
+        <div class="space-y-1.5">
+          <label class="text-xs text-gray-400 font-medium block">Allowed Model Aliases</label>
+          <div id="editClientAliasesChecks" class="space-y-1.5 max-h-40 overflow-y-auto no-scrollbar">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+        <div class="flex gap-3 justify-end pt-2">
+          <button type="button" onclick="closeEditClientModal()" class="px-4 py-2 border border-white/10 hover:bg-white/5 rounded-lg text-sm font-semibold transition">Cancel</button>
+          <button type="submit" class="px-4 py-2 bg-brand-600 hover:bg-brand-500 rounded-lg text-sm font-semibold transition">Save Client</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Global App State
+    let authToken = localStorage.getItem('phi_admin_token') || '';
+    let globalConfig = null;
+    let statusInterval = null;
+
+    // Initialize Lucide Icons
+    lucide.createIcons();
+
+    // Event Listeners for Authentication
+    document.getElementById('authBtn').addEventListener('click', authorize);
+    document.getElementById('authKeyInput').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') authorize();
+    });
+    document.getElementById('logoutBtn').addEventListener('click', logout);
+    document.getElementById('envForm').addEventListener('submit', saveEnvKeys);
+    document.getElementById('generateClientForm').addEventListener('submit', generateClientToken);
+    document.getElementById('addModelForm').addEventListener('submit', addModel);
+    document.getElementById('editClientForm').addEventListener('submit', saveClientEdit);
+
+    // Initial check
+    if (authToken) {
+      testAuth(authToken);
+    }
+
+    async function testAuth(token) {
+      try {
+        const res = await fetch('/auth-test', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          authToken = token;
+          localStorage.setItem('phi_admin_token', token);
+          document.getElementById('authOverlay').classList.add('hidden');
+          document.getElementById('mainDashboard').classList.remove('hidden');
+          switchTab('dashboard');
+          startStatusInterval();
+        } else {
+          showAuthError();
+        }
+      } catch (err) {
+        showAuthError();
+      }
+    }
+
+    function authorize() {
+      const token = document.getElementById('authKeyInput').value.trim();
+      if (!token) return;
+      testAuth(token);
+    }
+
+    function showAuthError() {
+      localStorage.removeItem('phi_admin_token');
+      document.getElementById('authError').classList.remove('hidden');
+      document.getElementById('authOverlay').classList.remove('hidden');
+      document.getElementById('mainDashboard').classList.add('hidden');
+      stopStatusInterval();
+    }
+
+    function logout() {
+      authToken = '';
+      localStorage.removeItem('phi_admin_token');
+      document.getElementById('authKeyInput').value = '';
+      document.getElementById('authOverlay').classList.remove('hidden');
+      document.getElementById('mainDashboard').classList.add('hidden');
+      document.getElementById('authError').classList.add('hidden');
+      stopStatusInterval();
+    }
+
+    // Active Navigation Tabs
+    let currentTab = 'dashboard';
+    const tabDetails = {
+      dashboard: { title: 'Dashboard Overview', desc: 'Monitoring real-time completions activity and gateway statuses.' },
+      aliases: { title: 'Model Aliases', desc: 'Map client aliases to primary models and specify ordered failover lists.' },
+      providers: { title: 'Providers & Models', desc: 'Configure LLM upstream APIs and manage active model registry.' },
+      env: { title: 'Upstream Keys', desc: 'Edit credential tokens for external provider APIs.' },
+      clients: { title: 'Clients & Tokens', desc: 'Manage access keys, routing scopes, and security hashes.' }
+    };
+
+    function switchTab(tabId) {
+      currentTab = tabId;
+      document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-view').forEach(view => view.classList.add('hidden'));
+
+      document.getElementById(`tabBtn-${tabId}`).classList.add('active');
+      document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+
+      document.getElementById('tabTitle').innerText = tabDetails[tabId].title;
+      document.getElementById('tabDesc').innerText = tabDetails[tabId].desc;
+
+      refreshData();
+    }
+
+    // Refresh Data helper
+    async function refreshData() {
+      if (currentTab === 'dashboard') {
+        await refreshStatus();
+      } else if (currentTab === 'aliases' || currentTab === 'providers' || currentTab === 'clients') {
+        await fetchConfigs();
+      } else if (currentTab === 'env') {
+        await fetchEnvStatus();
+      }
+    }
+
+    function startStatusInterval() {
+      if (statusInterval) clearInterval(statusInterval);
+      statusInterval = setInterval(() => {
+        if (currentTab === 'dashboard') refreshStatus();
+      }, 5000);
+    }
+
+    function stopStatusInterval() {
+      if (statusInterval) clearInterval(statusInterval);
+    }
+
+    // Uptime formatter
+    function formatUptime(sec) {
+      const h = Math.floor(sec / 3600).toString().padStart(2, '0');
+      const m = Math.floor((sec % 3600) / 60).toString().padStart(2, '0');
+      const s = Math.floor(sec % 60).toString().padStart(2, '0');
+      return `${h}:${m}:${s}`;
+    }
+
+    // Format bytes to MB
+    function formatMB(bytes) {
+      return (bytes / 1024 / 1024).toFixed(1) + ' MB';
+    }
+
+    // Fetch live status
+    async function refreshStatus() {
+      try {
+        const res = await fetch('/admin/api/status', {
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        if (res.status === 401) {
+          showAuthError();
+          return;
+        }
+        const body = await res.json();
+        if (body.success) {
+          const s = body.data;
+          document.getElementById('vpsUptime').innerText = formatUptime(s.uptime);
+          document.getElementById('statAliases').innerText = s.stats.aliasesCount;
+          document.getElementById('statModels').innerText = s.stats.modelsCount;
+          document.getElementById('statClients').innerText = s.stats.clientsCount;
+          document.getElementById('statMemory').innerText = formatMB(s.memory.heapUsed);
+
+          // Populate log table
+          const tbody = document.getElementById('logsTableBody');
+          tbody.innerHTML = '';
+          if (s.logs.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-8 text-center text-gray-500">No requests processed yet.</td></tr>`;
+          } else {
+            s.logs.forEach(log => {
+              const statusColor = log.statusCode >= 200 && log.statusCode < 300 ? 'text-green-400' : 'text-red-400 bg-red-500/10';
+              const tr = document.createElement('tr');
+              tr.className = 'hover:bg-white/[0.02] transition-colors';
+              tr.innerHTML = `
+                <td class="px-6 py-3.5 text-gray-400 text-xs">${new Date(log.timestamp).toLocaleTimeString()}</td>
+                <td class="px-6 py-3.5 text-gray-300 font-semibold text-xs">${log.clientLabel || log.clientId}</td>
+                <td class="px-6 py-3.5"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-white/5 border border-white/10 text-brand-300">${log.modelAlias || '-'}</span></td>
+                <td class="px-6 py-3.5 text-gray-500 text-xs">${log.upstreamModelKey || '-'}</td>
+                <td class="px-6 py-3.5"><span class="px-1.5 py-0.5 rounded font-bold text-xs ${statusColor}">${log.statusCode}</span></td>
+                <td class="px-6 py-3.5 text-right text-gray-400 text-xs">${parseFloat(log.durationMs).toFixed(0)}ms</td>
+              `;
+              tbody.appendChild(tr);
+            });
+          }
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    // Fetch current configurations
+    async function fetchConfigs() {
+      try {
+        const res = await fetch('/admin/api/config', {
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        if (res.status === 401) {
+          showAuthError();
+          return;
+        }
+        const body = await res.json();
+        if (body.success) {
+          globalConfig = body.data;
+          
+          if (currentTab === 'aliases') renderAliases();
+          if (currentTab === 'providers') renderProvidersAndModels();
+          if (currentTab === 'clients') renderClientsTab();
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    // Render Aliases Editor
+    function renderAliases() {
+      const container = document.getElementById('aliasesContainer');
+      container.innerHTML = '';
+
+      const aliases = globalConfig.aliases;
+      const modelKeys = Object.keys(globalConfig.models);
+
+      Object.entries(aliases).forEach(([aliasName, aliasInfo]) => {
+        const card = document.createElement('div');
+        card.className = 'p-5 rounded-xl border border-white/5 bg-white/[0.01] hover:bg-white/[0.02] transition-colors space-y-4';
+        
+        let selectOptions = `<option value="">-- Choose Target Model --</option>`;
+        modelKeys.forEach(mk => {
+          selectOptions += `<option value="${mk}" ${aliasInfo.target_model_key === mk ? 'selected' : ''}>${mk} (${globalConfig.models[mk].api_model_id})</option>`;
+        });
+
+        // Fallbacks UI
+        let fallbacksListHtml = '';
+        aliasInfo.fallback_model_keys.forEach((fkey, index) => {
+          let fbSelectOptions = `<option value="">-- Choose Fallback Model --</option>`;
+          modelKeys.forEach(mk => {
+            fbSelectOptions += `<option value="${mk}" ${fkey === mk ? 'selected' : ''}>${mk}</option>`;
+          });
+          fallbacksListHtml += `
+            <div class="flex items-center gap-2" data-index="${index}">
+              <span class="text-xs text-gray-500 font-mono">#${index + 1}</span>
+              <select onchange="updateAliasFallback('${aliasName}', ${index}, this.value)" class="glass-input flex-1 px-3 py-1.5 rounded-lg text-sm bg-darkbg">
+                ${fbSelectOptions}
+              </select>
+              <button onclick="removeAliasFallback('${aliasName}', ${index})" class="p-2 border border-red-500/10 hover:bg-red-500/10 rounded-lg text-red-500 hover:text-red-400 transition">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+              </button>
+            </div>
+          `;
+        });
+
+        card.innerHTML = `
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+              <span class="font-outfit font-bold text-lg text-brand-300 font-mono">${aliasName}</span>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" onchange="toggleAliasEnabled('${aliasName}', this.checked)" ${aliasInfo.enabled ? 'checked' : ''} class="w-4 h-4 text-brand-600 rounded bg-black/40 border border-white/10">
+                <span class="text-xs text-gray-400 font-medium">Enabled</span>
+              </label>
+            </div>
+            <div class="text-xs text-gray-500 font-mono">
+              Requires: ${aliasInfo.required_capabilities.join(', ') || 'none'}
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+            <!-- Target Model -->
+            <div class="space-y-1.5">
+              <label class="text-xs text-gray-400 font-medium">Primary Model Route</label>
+              <select onchange="updateAliasTarget('${aliasName}', this.value)" class="glass-input w-full px-4 py-2.5 rounded-lg text-sm bg-darkbg font-mono">
+                ${selectOptions}
+              </select>
+            </div>
+
+            <!-- Fallback Chain -->
+            <div class="space-y-3">
+              <div class="flex items-center justify-between">
+                <label class="text-xs text-gray-400 font-medium">Fallback Cascade Chain</label>
+                <button onclick="addAliasFallback('${aliasName}')" class="text-brand-400 hover:text-brand-300 font-semibold text-xs flex items-center gap-1">
+                  <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i>
+                  <span>Add Fallback</span>
+                </button>
+              </div>
+              <div class="space-y-2">
+                ${fallbacksListHtml || '<div class="text-xs text-gray-600 font-mono py-2">No fallback models configured. Requests will crash immediately if primary model fails.</div>'}
+              </div>
+            </div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+      lucide.createIcons();
+    }
+
+    // Alias state modifiers
+    function toggleAliasEnabled(alias, val) {
+      globalConfig.aliases[alias].enabled = val;
+    }
+    function updateAliasTarget(alias, val) {
+      globalConfig.aliases[alias].target_model_key = val;
+    }
+    function updateAliasFallback(alias, index, val) {
+      globalConfig.aliases[alias].fallback_model_keys[index] = val;
+    }
+    function removeAliasFallback(alias, index) {
+      globalConfig.aliases[alias].fallback_model_keys.splice(index, 1);
+      renderAliases();
+    }
+    function addAliasFallback(alias) {
+      globalConfig.aliases[alias].fallback_model_keys.push('');
+      renderAliases();
+    }
+
+    // Save alias routing config
+    async function saveAliasRouting() {
+      try {
+        const res = await fetch('/admin/api/config', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+          },
+          body: JSON.stringify({ aliases: globalConfig.aliases })
+        });
+        const body = await res.json();
+        if (body.success) {
+          alert('Alias routing saved and dynamically hot-reloaded!');
+          fetchConfigs();
+        } else {
+          alert('Error saving config: ' + body.error.message);
+        }
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    // Render Providers list and models list
+    function renderProvidersAndModels() {
+      // Providers
+      const providersDiv = document.getElementById('providersList');
+      providersDiv.innerHTML = '';
+
+      Object.entries(globalConfig.providers).forEach(([provName, pInfo]) => {
+        const div = document.createElement('div');
+        div.className = 'p-4 rounded-xl border border-white/5 bg-white/[0.01] hover:bg-white/[0.02] flex items-center justify-between transition-colors';
+        div.innerHTML = `
+          <div class="space-y-1">
+            <div class="font-outfit font-bold capitalize text-sm flex items-center gap-1.5">
+              <span>${provName}</span>
+              <span class="w-1.5 h-1.5 rounded-full ${pInfo.enabled ? 'bg-green-500' : 'bg-gray-600'}"></span>
+            </div>
+            <div class="text-[10px] text-gray-500 font-mono">${pInfo.base_url}</div>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" onchange="toggleProviderEnabled('${provName}', this.checked)" ${pInfo.enabled ? 'checked' : ''} class="sr-only peer">
+            <div class="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-gray-300 after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-brand-600"></div>
+          </label>
+        `;
+        providersDiv.appendChild(div);
+      });
+
+      // Models
+      const tbody = document.getElementById('modelsTableBody');
+      tbody.innerHTML = '';
+      Object.entries(globalConfig.models).forEach(([mkey, mInfo]) => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-white/[0.01] transition-colors';
+        tr.innerHTML = `
+          <td class="py-3 px-4 text-brand-300 font-semibold">${mkey}</td>
+          <td class="py-3 px-4 capitalize">${mInfo.provider}</td>
+          <td class="py-3 px-4 text-xs text-gray-400">${mInfo.api_model_id}</td>
+          <td class="py-3 px-4"><span class="text-[10px] text-gray-500">${mInfo.capabilities.join(', ')}</span></td>
+          <td class="py-3 px-4 text-right">
+            <button onclick="openEditModelModal('${mkey}')" class="p-1.5 border border-brand-500/10 hover:bg-brand-500/10 rounded-lg text-brand-400 hover:text-brand-300 transition mr-1">
+              <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+            </button>
+            <button onclick="deleteModel('${mkey}')" class="p-1.5 border border-red-500/10 hover:bg-red-500/10 rounded-lg text-red-500 hover:text-red-400 transition">
+              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+      lucide.createIcons();
+    }
+
+    function toggleProviderEnabled(provider, val) {
+      globalConfig.providers[provider].enabled = val;
+    }
+
+    async function saveProviders() {
+      try {
+        const res = await fetch('/admin/api/config', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+          },
+          body: JSON.stringify({ providers: globalConfig.providers, models: globalConfig.models })
+        });
+        const body = await res.json();
+        if (body.success) {
+          alert('Providers configuration saved successfully.');
+          fetchConfigs();
+        } else {
+          alert(body.error.message);
+        }
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    // Modal Add/Edit Model Helpers
+    let editingModelKey = null;
+
+    function openAddModelModal() {
+      editingModelKey = null;
+      document.getElementById('addModelModalTitle').innerText = 'Add Upstream Model';
+      document.getElementById('modelSubmitBtn').innerText = 'Add Model';
+      
+      const keyInput = document.getElementById('modelKeyInput');
+      keyInput.value = '';
+      keyInput.disabled = false;
+      keyInput.classList.remove('bg-darkbg', 'text-gray-500');
+
+      const select = document.getElementById('modelProviderSelect');
+      select.innerHTML = '';
+      Object.keys(globalConfig.providers).forEach(p => {
+        select.innerHTML += `<option value="${p}">${p}</option>`;
+      });
+
+      document.getElementById('modelApiIdInput').value = '';
+      document.querySelectorAll('#addModelForm input[type="checkbox"]').forEach(cb => {
+        cb.checked = false;
+      });
+
+      document.getElementById('addModelModal').classList.remove('hidden');
+    }
+
+    function openEditModelModal(mkey) {
+      const mInfo = globalConfig.models[mkey];
+      if (!mInfo) return;
+
+      editingModelKey = mkey;
+      document.getElementById('addModelModalTitle').innerText = 'Edit Upstream Model';
+      document.getElementById('modelSubmitBtn').innerText = 'Save Model';
+
+      const keyInput = document.getElementById('modelKeyInput');
+      keyInput.value = mkey;
+      keyInput.disabled = true;
+      keyInput.classList.add('bg-darkbg', 'text-gray-500');
+
+      const select = document.getElementById('modelProviderSelect');
+      select.innerHTML = '';
+      Object.keys(globalConfig.providers).forEach(p => {
+        select.innerHTML += `<option value="${p}" ${mInfo.provider === p ? 'selected' : ''}>${p}</option>`;
+      });
+
+      document.getElementById('modelApiIdInput').value = mInfo.api_model_id;
+      document.querySelectorAll('#addModelForm input[type="checkbox"]').forEach(cb => {
+        cb.checked = mInfo.capabilities.includes(cb.value);
+      });
+
+      document.getElementById('addModelModal').classList.remove('hidden');
+    }
+
+    function closeAddModelModal() {
+      document.getElementById('addModelModal').classList.add('hidden');
+      document.getElementById('addModelForm').reset();
+      editingModelKey = null;
+    }
+
+    async function addModel(e) {
+      e.preventDefault();
+      // Use editingModelKey if disabled input is not submitted
+      const mkey = editingModelKey || document.getElementById('modelKeyInput').value.trim();
+      const provider = document.getElementById('modelProviderSelect').value;
+      const apiModelId = document.getElementById('modelApiIdInput').value.trim();
+      
+      const caps = [];
+      document.querySelectorAll('#addModelForm input[type="checkbox"]:checked').forEach(cb => {
+        caps.push(cb.value);
+      });
+
+      if (!mkey || !provider || !apiModelId) return;
+
+      globalConfig.models[mkey] = {
+        provider,
+        api_model_id: apiModelId,
+        capabilities: caps
+      };
+
+      try {
+        const res = await fetch('/admin/api/config', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+          },
+          body: JSON.stringify({ models: globalConfig.models })
+        });
+        const body = await res.json();
+        if (body.success) {
+          closeAddModelModal();
+          fetchConfigs();
+        } else {
+          alert(body.error.message);
+        }
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function deleteModel(mkey) {
+      if (!confirm(`Are you sure you want to delete model mapping '${mkey}'?`)) return;
+
+      delete globalConfig.models[mkey];
+      try {
+        const res = await fetch('/admin/api/config', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+          },
+          body: JSON.stringify({ models: globalConfig.models })
+        });
+        const body = await res.json();
+        if (body.success) {
+          fetchConfigs();
+        } else {
+          alert(body.error.message);
+        }
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    // Fetch and render Upstream Keys status
+    async function fetchEnvStatus() {
+      try {
+        const res = await fetch('/admin/api/config', {
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        if (res.status === 401) {
+          showAuthError();
+          return;
+        }
+        const body = await res.json();
+        if (body.success) {
+          const envStatus = body.envStatus;
+          Object.entries(envStatus).forEach(([k, isSet]) => {
+            const el = document.getElementById(`envStatus-${k}`);
+            if (el) {
+              if (isSet) {
+                el.innerText = 'Key Configured (Active)';
+                el.className = 'text-[10px] text-green-400 font-medium';
+              } else {
+                el.innerText = 'Key Missing (Empty)';
+                el.className = 'text-[10px] text-yellow-500 font-medium';
+              }
+            }
+          });
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    async function saveEnvKeys(e) {
+      e.preventDefault();
+      const updates = {};
+      const fd = new FormData(document.getElementById('envForm'));
+      
+      for (const [key, val] of fd.entries()) {
+        const trimmedVal = val.trim();
+        if (trimmedVal) {
+          updates[key] = trimmedVal;
+        }
+      }
+
+      if (Object.keys(updates).length === 0) {
+        alert('Please fill at least one API key value.');
+        return;
+      }
+
+      try {
+        const res = await fetch('/admin/api/env', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+          },
+          body: JSON.stringify(updates)
+        });
+        const body = await res.json();
+        if (body.success) {
+          alert('Upstream API keys saved and hot-reloaded successfully!');
+          document.getElementById('envForm').reset();
+          fetchEnvStatus();
+        } else {
+          alert(body.error.message);
+        }
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    // Render Clients Tab
+    function renderClientsTab() {
+      // Allowed aliases checklist in Generate key form
+      const aliasesDiv = document.getElementById('clientAliasesChecks');
+      aliasesDiv.innerHTML = '';
+      const aliasesKeys = Object.keys(globalConfig.aliases);
+      aliasesKeys.forEach(ak => {
+        aliasesDiv.innerHTML += `
+          <label class="flex items-center gap-2 text-xs text-gray-300 font-mono">
+            <input type="checkbox" value="${ak}" checked class="w-3.5 h-3.5 text-brand-600 rounded bg-black/40 border border-white/10">
+            <span>${ak}</span>
+          </label>
+        `;
+      });
+
+      // Clients List
+      const tbody = document.getElementById('clientsTableBody');
+      tbody.innerHTML = '';
+
+      globalConfig.clients.forEach(c => {
+        const scopeBadges = c.allowed_model_aliases.map(a => `<span class="px-1.5 py-0.5 rounded bg-brand-500/10 border border-brand-500/20 text-brand-300 text-[10px] font-bold font-mono">${a}</span>`).join(' ');
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-white/[0.01] transition-colors';
+        tr.innerHTML = `
+          <td class="py-3.5 px-4 font-semibold text-gray-300">${c.client_id}</td>
+          <td class="py-3.5 px-4 text-xs text-gray-400">${c.label}</td>
+          <td class="py-3.5 px-4 font-mono text-xs text-gray-500">${c.key_hint || '-'}</td>
+          <td class="py-3.5 px-4 flex flex-wrap gap-1">${scopeBadges || '<span class="text-xs text-gray-600 font-mono">none</span>'}</td>
+          <td class="py-3.5 px-4">
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" onchange="toggleClientEnabled('${c.client_id}', this.checked)" ${c.enabled ? 'checked' : ''} class="sr-only peer">
+              <div class="w-8 h-4.5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-gray-300 after:border-gray-300 after:border after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-brand-600"></div>
+            </label>
+          </td>
+          <td class="py-3.5 px-4 text-right">
+            <button onclick="openEditClientModal('${c.client_id}')" class="p-1.5 border border-brand-500/10 hover:bg-brand-500/10 rounded-lg text-brand-400 hover:text-brand-300 transition mr-1">
+              <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+            </button>
+            <button onclick="deleteClient('${c.client_id}')" class="p-1.5 border border-red-500/10 hover:bg-red-500/10 rounded-lg text-red-500 hover:text-red-400 transition">
+              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+      lucide.createIcons();
+    }
+
+    async function toggleClientEnabled(clientId, val) {
+      try {
+        const res = await fetch('/admin/api/clients/edit', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+          },
+          body: JSON.stringify({ client_id: clientId, enabled: val })
+        });
+        const body = await res.json();
+        if (!body.success && body.error) {
+          alert(body.error.message);
+          fetchConfigs();
+        }
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    function openEditClientModal(clientId) {
+      const client = globalConfig.clients.find(c => c.client_id === clientId);
+      if (!client) return;
+
+      document.getElementById('editClientIdHidden').value = clientId;
+      document.getElementById('editClientIdDisplay').value = clientId;
+      document.getElementById('editClientLabelInput').value = client.label;
+
+      const aliasesDiv = document.getElementById('editClientAliasesChecks');
+      aliasesDiv.innerHTML = '';
+      const aliasesKeys = Object.keys(globalConfig.aliases);
+      aliasesKeys.forEach(ak => {
+        const checked = client.allowed_model_aliases.includes(ak) ? 'checked' : '';
+        aliasesDiv.innerHTML += `
+          <label class="flex items-center gap-2 text-xs text-gray-300 font-mono">
+            <input type="checkbox" value="${ak}" ${checked} class="w-3.5 h-3.5 text-brand-600 rounded bg-black/40 border border-white/10">
+            <span>${ak}</span>
+          </label>
+        `;
+      });
+
+      document.getElementById('editClientModal').classList.remove('hidden');
+    }
+
+    function closeEditClientModal() {
+      document.getElementById('editClientModal').classList.add('hidden');
+      document.getElementById('editClientForm').reset();
+    }
+
+    async function saveClientEdit(e) {
+      e.preventDefault();
+      const client_id = document.getElementById('editClientIdHidden').value;
+      const label = document.getElementById('editClientLabelInput').value.trim();
+      
+      const allowed_model_aliases = [];
+      document.querySelectorAll('#editClientAliasesChecks input[type="checkbox"]:checked').forEach(cb => {
+        allowed_model_aliases.push(cb.value);
+      });
+
+      if (!client_id || !label) return;
+
+      try {
+        const res = await fetch('/admin/api/clients/edit', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+          },
+          body: JSON.stringify({ client_id, label, allowed_model_aliases })
+        });
+        const body = await res.json();
+        if (body.success) {
+          closeEditClientModal();
+          fetchConfigs();
+        } else {
+          alert(body.error.message);
+        }
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function deleteClient(clientId) {
+      if (!confirm(`Are you sure you want to delete client key credentials for '${clientId}'?`)) return;
+
+      try {
+        const res = await fetch('/admin/api/clients/delete', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+          },
+          body: JSON.stringify({ client_id: clientId })
+        });
+        const body = await res.json();
+        if (body.success) {
+          fetchConfigs();
+        } else {
+          alert(body.error.message);
+        }
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    let newlyGeneratedToken = '';
+
+    async function generateClientToken(e) {
+      e.preventDefault();
+      const client_id = document.getElementById('clientIdInput').value.trim();
+      const label = document.getElementById('clientLabelInput').value.trim();
+      
+      const allowed_model_aliases = [];
+      document.querySelectorAll('#clientAliasesChecks input[type="checkbox"]:checked').forEach(cb => {
+        allowed_model_aliases.push(cb.value);
+      });
+
+      if (!client_id || !label) return;
+
+      try {
+        const res = await fetch('/admin/api/clients/generate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+          },
+          body: JSON.stringify({ client_id, label, allowed_model_aliases })
+        });
+        const body = await res.json();
+        if (body.success) {
+          newlyGeneratedToken = body.data.raw_token;
+          document.getElementById('rawTokenDisplay').innerText = newlyGeneratedToken;
+          document.getElementById('keyResultModal').classList.remove('hidden');
+          document.getElementById('generateClientForm').reset();
+          fetchConfigs();
+        } else {
+          alert(body.error.message);
+        }
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    function copyGeneratedToken() {
+      navigator.clipboard.writeText(newlyGeneratedToken);
+      alert('Copied to clipboard!');
+    }
+
+    function closeKeyResultModal() {
+      newlyGeneratedToken = '';
+      document.getElementById('keyResultModal').classList.add('hidden');
+    }
+  </script>
+</body>
+</html>

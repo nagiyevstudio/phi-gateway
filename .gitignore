@@ -1,0 +1,15 @@
+node_modules/
+dist/
+build/
+.next/
+.env
+.env.*
+!.env.example
+config/*.env
+config/*.local.json
+config/providers.json
+config/clients.json
+logs/
+*.log
+.DS_Store
+

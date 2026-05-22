@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "providers": {
+    "openrouter": {
+      "enabled": true,
+      "base_url": "https://openrouter.ai/api/v1",
+      "api_key_env": "OPENROUTER_API_KEY",
+      "timeout_ms": 60000
+    },
+    "openai": {
+      "enabled": false,
+      "base_url": "https://api.openai.com/v1",
+      "api_key_env": "OPENAI_API_KEY",
+      "timeout_ms": 60000
+    },
+    "google": {
+      "enabled": false,
+      "base_url": "https://generativelanguage.googleapis.com/v1beta",
+      "api_key_env": "GEMINI_API_KEY",
+      "timeout_ms": 60000
+    },
+    "alibaba": {
+      "enabled": false,
+      "base_url": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+      "api_key_env": "DASHSCOPE_API_KEY",
+      "timeout_ms": 60000
+    },
+    "zai": {
+      "enabled": false,
+      "base_url": "https://api.z.ai/api/paas/v4",
+      "api_key_env": "ZAI_API_KEY",
+      "timeout_ms": 60000
+    }
+  },
+  "models": {
+    "openrouter_qwen_reasoning": {
+      "provider": "openrouter",
+      "api_model_id": "qwen/qwen3.6-plus",
+      "capabilities": ["text_input", "image_input", "pdf_input", "text_output", "structured_output", "tool_calling", "reasoning"]
+    },
+    "openrouter_claude_sonnet": {
+      "provider": "openrouter",
+      "api_model_id": "anthropic/claude-sonnet-4.6",
+      "capabilities": ["text_input", "image_input", "pdf_input", "text_output", "structured_output", "tool_calling", "reasoning"]
+    },
+    "openai_gpt54_nano": {
+      "provider": "openai",
+      "api_model_id": "gpt-5.4-nano",
+      "capabilities": ["text_input", "image_input", "text_output", "structured_output", "fast"]
+    },
+    "google_gemini_flash_lite": {
+      "provider": "google",
+      "api_model_id": "gemini-3.1-flash-lite",
+      "capabilities": ["text_input", "image_input", "audio_input", "pdf_input", "text_output", "transcription", "structured_output", "fast"]
+    }
+  }
+}
+

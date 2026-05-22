@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "clients": [
+    {
+      "client_id": "phi-backend",
+      "label": "PHI shared-hosting backend",
+      "enabled": true,
+      "key_hash": "scrypt$REPLACE_WITH_SALT$REPLACE_WITH_DIGEST",
+      "key_hint": "...last4",
+      "allowed_model_aliases": [
+        "phi-parser",
+        "phi-classifier",
+        "phi-vision",
+        "phi-audio-transcriber"
+      ]
+    }
+  ]
+}
+
