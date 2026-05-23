@@ -4,6 +4,25 @@ import { authenticateRequest } from '../auth';
 const FISCAL_ID_REGEX = /[A-HJ-NP-Za-km-z1-9]{42,46}/;
 const FISCAL_ID_EXACT = /^[A-HJ-NP-Za-km-z1-9]{42,46}$/;
 
+import { ProxyAgent } from 'undici';
+
+let cachedProxyUrl = '';
+let cachedProxyAgent: ProxyAgent | undefined = undefined;
+
+function getProxyAgent() {
+  const proxyUrl = process.env.EKASSA_PROXY;
+  if (!proxyUrl) {
+    cachedProxyUrl = '';
+    cachedProxyAgent = undefined;
+    return undefined;
+  }
+  if (proxyUrl !== cachedProxyUrl) {
+    cachedProxyUrl = proxyUrl;
+    cachedProxyAgent = new ProxyAgent(proxyUrl);
+  }
+  return cachedProxyAgent;
+}
+
 export function extractFiscalId(qrUrl: string | undefined, fiscalId: string | undefined): string | null {
   if (fiscalId && FISCAL_ID_EXACT.test(fiscalId.trim())) {
     return fiscalId.trim();
@@ -62,14 +81,21 @@ export async function ekassaRoutes(fastify: FastifyInstance) {
     const timerId = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
-      fastify.log.info({ fiscalId }, `[e-Kassa] Downloading receipt image from upstream...`);
-      const response = await fetch(downloadUrl, {
+      const fetchOptions: any = {
         method: 'GET',
         headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
           'Accept': 'image/jpeg,application/json'
         },
         signal: controller.signal
-      });
+      };
+
+      const proxyAgent = getProxyAgent();
+      if (proxyAgent) {
+        fetchOptions.dispatcher = proxyAgent;
+      }
+
+      const response = await fetch(downloadUrl, fetchOptions);
 
       clearTimeout(timerId);
 

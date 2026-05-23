@@ -2,6 +2,24 @@ import { FastifyInstance } from 'fastify';
 import { authenticateRequest } from '../auth';
 import { extractFiscalId } from './ekassa';
 import { resolveAndExecuteCompletion } from '../adapters/resolver';
+import { ProxyAgent } from 'undici';
+
+let cachedProxyUrl = '';
+let cachedProxyAgent: ProxyAgent | undefined = undefined;
+
+function getProxyAgent() {
+  const proxyUrl = process.env.EKASSA_PROXY;
+  if (!proxyUrl) {
+    cachedProxyUrl = '';
+    cachedProxyAgent = undefined;
+    return undefined;
+  }
+  if (proxyUrl !== cachedProxyUrl) {
+    cachedProxyUrl = proxyUrl;
+    cachedProxyAgent = new ProxyAgent(proxyUrl);
+  }
+  return cachedProxyAgent;
+}
 
 interface Category {
   id: string;
@@ -79,12 +97,21 @@ export async function receiptRoutes(fastify: FastifyInstance) {
       const timerId = setTimeout(() => controller.abort(), timeoutMs);
 
       try {
-        fastify.log.info({ fiscalId }, `[Receipt Analyze] Downloading receipt image from e-Kassa...`);
-        const response = await fetch(downloadUrl, {
+        const fetchOptions: any = {
           method: 'GET',
-          headers: { 'Accept': 'image/jpeg,application/json' },
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'image/jpeg,application/json'
+          },
           signal: controller.signal
-        });
+        };
+
+        const proxyAgent = getProxyAgent();
+        if (proxyAgent) {
+          fetchOptions.dispatcher = proxyAgent;
+        }
+
+        const response = await fetch(downloadUrl, fetchOptions);
         clearTimeout(timerId);
 
         if (response.status === 209) {
