@@ -1,25 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { authenticateRequest } from '../auth';
-import { extractFiscalId } from './ekassa';
 import { resolveAndExecuteCompletion } from '../adapters/resolver';
-import { ProxyAgent } from 'undici';
-
-let cachedProxyUrl = '';
-let cachedProxyAgent: ProxyAgent | undefined = undefined;
-
-function getProxyAgent() {
-  const proxyUrl = process.env.EKASSA_PROXY;
-  if (!proxyUrl) {
-    cachedProxyUrl = '';
-    cachedProxyAgent = undefined;
-    return undefined;
-  }
-  if (proxyUrl !== cachedProxyUrl) {
-    cachedProxyUrl = proxyUrl;
-    cachedProxyAgent = new ProxyAgent(proxyUrl);
-  }
-  return cachedProxyAgent;
-}
 
 interface Category {
   id: string;
@@ -32,10 +13,7 @@ interface CategoryRule {
 }
 
 interface AnalyzeRequest {
-  source: 'qr' | 'image';
-  qr_url?: string;
-  fiscal_id?: string;
-  image_base64?: string;
+  image_base64: string;
   mime_type?: string;
   categories: Category[];
   category_rules: CategoryRule[];
@@ -64,112 +42,19 @@ export async function receiptRoutes(fastify: FastifyInstance) {
   fastify.post('/receipt/analyze', async (request, reply) => {
     const body = request.body as AnalyzeRequest;
 
-    if (!body || !body.source || !Array.isArray(body.categories) || !Array.isArray(body.category_rules)) {
+    if (!body || !body.image_base64 || !Array.isArray(body.categories) || !Array.isArray(body.category_rules)) {
       return reply.status(400).send({
         success: false,
         error: {
           code: 'invalid_request',
-          message: "Request must contain 'source', 'categories' array, and 'category_rules' array."
+          message: "Request must contain 'image_base64', 'categories' array, and 'category_rules' array."
         }
       });
     }
 
-    let base64Image = '';
-    let imageSource: 'ekassa' | 'upload' = 'upload';
+    const base64Image = body.image_base64;
+    const imageSource = 'upload';
     const mimeType = body.mime_type || 'image/jpeg';
-
-    // 1. Resolve image source
-    if (body.source === 'qr') {
-      const fiscalId = extractFiscalId(body.qr_url, body.fiscal_id);
-      if (!fiscalId) {
-        return reply.status(400).send({
-          success: false,
-          error: {
-            code: 'invalid_fiscal_id',
-            message: 'A valid fiscal ID could not be extracted for the QR source.'
-          }
-        });
-      }
-
-      const downloadUrl = `https://monitoring.e-kassa.gov.az/pks-monitoring/2.0.0/documents/${fiscalId}`;
-      const timeoutMs = 15000;
-      const controller = new AbortController();
-      const timerId = setTimeout(() => controller.abort(), timeoutMs);
-
-      try {
-        const fetchOptions: any = {
-          method: 'GET',
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'image/jpeg,application/json'
-          },
-          signal: controller.signal
-        };
-
-        const proxyAgent = getProxyAgent();
-        if (proxyAgent) {
-          fetchOptions.dispatcher = proxyAgent;
-        }
-
-        const response = await fetch(downloadUrl, fetchOptions);
-        clearTimeout(timerId);
-
-        if (response.status === 209) {
-          return reply.status(502).send({
-            success: false,
-            error: {
-              code: 'ekassa_receipt_not_found',
-              message: 'Receipt was not found in e-Kassa.'
-            }
-          });
-        }
-
-        if (response.status !== 200 && response.status !== 206) {
-          const errText = await response.text().catch(() => '');
-          return reply.status(502).send({
-            success: false,
-            error: {
-              code: 'ekassa_download_failed',
-              message: `e-Kassa download failed with status ${response.status}`,
-              details: { status: response.status, response: errText.slice(0, 300) }
-            }
-          });
-        }
-
-        const buffer = await response.arrayBuffer();
-        base64Image = Buffer.from(buffer).toString('base64');
-        imageSource = 'ekassa';
-      } catch (err: any) {
-        clearTimeout(timerId);
-        const isTimeout = err.name === 'AbortError';
-        return reply.status(isTimeout ? 504 : 502).send({
-          success: false,
-          error: {
-            code: isTimeout ? 'gateway_timeout' : 'ekassa_download_failed',
-            message: isTimeout ? 'e-Kassa request timed out.' : (err.message || String(err))
-          }
-        });
-      }
-    } else if (body.source === 'image') {
-      if (!body.image_base64) {
-        return reply.status(400).send({
-          success: false,
-          error: {
-            code: 'invalid_request',
-            message: "Missing 'image_base64' when source is 'image'."
-          }
-        });
-      }
-      base64Image = body.image_base64;
-    } else {
-      return reply.status(400).send({
-        success: false,
-        error: {
-          code: 'invalid_request',
-          message: "Invalid source. Must be 'qr' or 'image'."
-        }
-      });
-    }
 
     // Check allowed model aliases
     const allowedAliases = request.client?.allowed_model_aliases || [];

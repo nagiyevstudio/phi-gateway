@@ -5,7 +5,6 @@ import path from 'node:path';
 import { loadAllConfigs, startWatchingConfigs } from './config';
 import { authenticateRequest } from './auth';
 import { openAiRoutes } from './routes/openai';
-import { ekassaRoutes } from './routes/ekassa';
 import { classifyRoutes } from './routes/classify';
 import { receiptRoutes } from './routes/receipt';
 import { voiceRoutes } from './routes/voice';
@@ -27,7 +26,6 @@ const server = fastify({
 
 // Register routes
 server.register(openAiRoutes, { prefix: '/v1' });
-server.register(ekassaRoutes, { prefix: '/phi' });
 server.register(classifyRoutes, { prefix: '/phi' });
 server.register(receiptRoutes, { prefix: '/phi' });
 server.register(voiceRoutes, { prefix: '/phi' });
