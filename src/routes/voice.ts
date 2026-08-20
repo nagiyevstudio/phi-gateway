@@ -118,13 +118,14 @@ Your task: analyze the input (text or audio), extract ALL expenses mentioned, an
 Categories:
 ${JSON.stringify(body.categories, null, 2)}
 
-Return ONLY a raw JSON object. No markdown, no code blocks, no explanation.
+Return ONLY a valid JSON object. No markdown. No code blocks. No explanation. No comments inside JSON.
 
+Output format:
 {
   "items": [
     {
-      "merchant": "Store or service name (e.g. Yango, Bazarstore, Bolt). Use "Unknown" if not mentioned.",
-      "category_id": "UUID from categories list, or null if none fit",
+      "merchant": "Store or service name",
+      "category_id": "uuid from categories or null",
       "amount_minor": 550,
       "description": "Short description",
       "confidence": 0.85
@@ -133,10 +134,12 @@ Return ONLY a raw JSON object. No markdown, no code blocks, no explanation.
 }
 
 Rules:
-1. Return ONLY the JSON object.
-2. Amounts in minor units (5.50 AZN → 550, 15 AZN → 1500).
-3. If no category fits, use null.
-4. Extract EVERY expense mentioned, even small ones.`;
+1. Return ONLY the JSON object, nothing else before or after.
+2. Amounts in MINOR units as integers: 5.50 AZN = 550, 15 AZN = 1500, 0.80 AZN = 80.
+3. merchant: store or service name (Yango, Bazarstore, Bolt). Use "Unknown" if not mentioned.
+4. category_id: pick UUID from categories list. If none fits, use null.
+5. Extract EVERY expense, even small ones.
+6. If input is audio: transcribe all spoken expenses. Language may be Azerbaijani, Russian, Turkish, or English.`;
 
     try {
       const inputDesc = body.input_type === 'audio' ? 'audio' : 'text';
@@ -156,7 +159,9 @@ Rules:
       let parsedResponse: { items?: any[] };
       
       try {
-        const cleanContent = content.replace(/```json|```/g, '').trim();
+        let cleanContent = content.replace(/```json|```/g, '').trim();
+        // Remove single-line comments that some models add
+        cleanContent = cleanContent.replace(/\/\/.*$/gm, '').trim();
         parsedResponse = JSON.parse(cleanContent);
       } catch (parseErr) {
         fastify.log.error({ content }, `[Voice Parse] Failed to parse model output JSON.`);

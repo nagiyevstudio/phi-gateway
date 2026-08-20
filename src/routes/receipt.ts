@@ -61,8 +61,9 @@ ${JSON.stringify(body.categories, null, 2)}
 Pre-learned category rules (match item names to categories):
 ${JSON.stringify(body.category_rules, null, 2)}
 
-Return ONLY a raw JSON object. No markdown, no code blocks.
+Return ONLY a valid JSON object. No markdown. No code blocks. No explanation. No comments inside JSON.
 
+Output format:
 {
   "merchant": "Store Name",
   "date": "YYYY-MM-DD HH:mm:ss",
@@ -75,19 +76,20 @@ Return ONLY a raw JSON object. No markdown, no code blocks.
       "quantity": 1,
       "unit_price": 1.50,
       "line_total": 1.50,
-      "category_id": "uuid-from-categories-list-or-null"
+      "category_id": "uuid or null"
     }
   ]
 }
 
 Rules:
-1. Extract ALL items. Do not skip any, even small amounts (bags, discounts).
-2. Currency defaults to "AZN".
-3. Prices in MAJOR units (float, e.g. 4.16 not 416).
-4. Payment method: "cash" or "card". Default "cash" if unclear.
-5. Date: "YYYY-MM-DD HH:mm:ss". If no time, use "12:00:00". If no date, use "${today} 12:00:00".
-6. Assign category_id to each item using the categories list and rules above. If no category fits, use null.
-7. For bank app screenshots: each transaction is a separate item, total = sum of all amounts.`;
+1. Return ONLY the JSON object, nothing else before or after.
+2. Extract ALL items. Do not skip any, even small amounts (bags, discounts, 0.07 AZN).
+3. Currency defaults to "AZN".
+4. Prices in MAJOR units as floats: 4.16 AZN stays 4.16, not 416.
+5. payment_method: "cash" or "card". Default "cash" if unclear.
+6. date: "YYYY-MM-DD HH:mm:ss". No time = "12:00:00". No date = "${today} 12:00:00".
+7. category_id: assign to each item using categories and rules above. If none fits, use null.
+8. Bank app screenshots: each transaction is a separate item. total = sum of all amounts.`;
 
     try {
       fastify.log.info(`[Receipt Analyze] Sending image to phi-vision (single request with categories)...`);
@@ -117,7 +119,9 @@ Rules:
       let parsed: any;
       
       try {
-        const cleanContent = content.replace(/```json|```/g, '').trim();
+        let cleanContent = content.replace(/```json|```/g, '').trim();
+        // Remove single-line comments that some models add
+        cleanContent = cleanContent.replace(/\/\/.*$/gm, '').trim();
         parsed = JSON.parse(cleanContent);
       } catch (parseErr) {
         fastify.log.error({ content }, `[Receipt Analyze] Failed to parse model output JSON.`);
