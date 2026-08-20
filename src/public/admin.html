@@ -737,24 +737,58 @@
       container.innerHTML = '';
 
       const aliases = globalConfig.aliases;
-      const modelKeys = Object.keys(globalConfig.models);
+      const allModels = globalConfig.models;
+
+      // Helper: check if model has all required capabilities
+      function modelMatchesCaps(modelKey, requiredCaps) {
+        const model = allModels[modelKey];
+        if (!model) return false;
+        if (!requiredCaps || requiredCaps.length === 0) return true;
+        return requiredCaps.every(cap => model.capabilities.includes(cap));
+      }
+
+      // Helper: build select options filtered by capabilities
+      function buildModelOptions(selectedKey, requiredCaps, includeEmpty) {
+        let html = includeEmpty ? '<option value="">-- Choose Model --</option>' : '';
+        
+        // Matching models first
+        const matching = [];
+        const nonMatching = [];
+        Object.entries(allModels).forEach(([mk, mInfo]) => {
+          if (modelMatchesCaps(mk, requiredCaps)) {
+            matching.push(mk);
+          } else {
+            nonMatching.push(mk);
+          }
+        });
+
+        matching.forEach(mk => {
+          const mInfo = allModels[mk];
+          html += `<option value="${mk}" ${selectedKey === mk ? 'selected' : ''}>${mk} (${mInfo.api_model_id})</option>`;
+        });
+
+        if (nonMatching.length > 0) {
+          html += `<option disabled>──────────────</option>`;
+          nonMatching.forEach(mk => {
+            const mInfo = allModels[mk];
+            html += `<option value="${mk}" ${selectedKey === mk ? 'selected' : ''}>${mk} (${mInfo.api_model_id}) — missing caps</option>`;
+          });
+        }
+
+        return html;
+      }
 
       Object.entries(aliases).forEach(([aliasName, aliasInfo]) => {
         const card = document.createElement('div');
         card.className = 'p-5 rounded-xl border border-white/5 bg-white/[0.01] hover:bg-white/[0.02] transition-colors space-y-4';
         
-        let selectOptions = `<option value="">-- Choose Target Model --</option>`;
-        modelKeys.forEach(mk => {
-          selectOptions += `<option value="${mk}" ${aliasInfo.target_model_key === mk ? 'selected' : ''}>${mk} (${globalConfig.models[mk].api_model_id})</option>`;
-        });
+        const requiredCaps = aliasInfo.required_capabilities || [];
+        const selectOptions = buildModelOptions(aliasInfo.target_model_key, requiredCaps, true);
 
         // Fallbacks UI
         let fallbacksListHtml = '';
         aliasInfo.fallback_model_keys.forEach((fkey, index) => {
-          let fbSelectOptions = `<option value="">-- Choose Fallback Model --</option>`;
-          modelKeys.forEach(mk => {
-            fbSelectOptions += `<option value="${mk}" ${fkey === mk ? 'selected' : ''}>${mk}</option>`;
-          });
+          const fbSelectOptions = buildModelOptions(fkey, requiredCaps, true);
           fallbacksListHtml += `
             <div class="flex items-center gap-2" data-index="${index}">
               <span class="text-xs text-gray-500 font-mono">#${index + 1}</span>
@@ -768,6 +802,9 @@
           `;
         });
 
+        // Count matching models
+        const matchCount = Object.keys(allModels).filter(mk => modelMatchesCaps(mk, requiredCaps)).length;
+
         card.innerHTML = `
           <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
             <div class="flex items-center gap-3">
@@ -777,8 +814,9 @@
                 <span class="text-xs text-gray-400 font-medium">Enabled</span>
               </label>
             </div>
-            <div class="text-xs text-gray-500 font-mono">
-              Requires: ${aliasInfo.required_capabilities.join(', ') || 'none'}
+            <div class="flex items-center gap-3 text-xs font-mono">
+              <span class="text-gray-500">Requires: ${requiredCaps.join(', ') || 'none'}</span>
+              <span class="px-2 py-0.5 rounded ${matchCount > 0 ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}">${matchCount} matching</span>
             </div>
           </div>
 
