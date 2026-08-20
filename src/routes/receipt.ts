@@ -53,15 +53,15 @@ export async function receiptRoutes(fastify: FastifyInstance) {
     const today = new Date().toISOString().slice(0, 10);
 
     const systemPrompt = `You are a precise receipt extraction agent.
-Analyze the provided receipt image and extract ALL receipt details including item categories.
+Analyze the provided receipt image and extract ALL receipt details.
 
-Available categories:
+Available categories (use ONLY from this list):
 ${JSON.stringify(body.categories, null, 2)}
 
-Pre-learned category rules (match item names to categories):
+Pre-learned category rules (item name → category):
 ${JSON.stringify(body.category_rules, null, 2)}
 
-Return ONLY a valid JSON object. No markdown. No code blocks. No explanation. No comments inside JSON.
+Return ONLY a valid JSON object. No markdown. No code blocks. No explanation.
 
 Output format:
 {
@@ -81,15 +81,16 @@ Output format:
   ]
 }
 
-Rules:
-1. Return ONLY the JSON object, nothing else before or after.
-2. Extract ALL items. Do not skip any, even small amounts (bags, discounts, 0.07 AZN).
-3. Currency defaults to "AZN".
-4. Prices in MAJOR units as floats: 4.16 AZN stays 4.16, not 416.
-5. payment_method: "cash" or "card". Default "cash" if unclear.
-6. date: "YYYY-MM-DD HH:mm:ss". No time = "12:00:00". No date = "${today} 12:00:00".
-7. category_id: assign to each item using categories and rules above. If none fits, use null.
-8. Bank app screenshots: each transaction is a separate item. total = sum of all amounts.`;
+Priority rules:
+1. line_total — MOST IMPORTANT. Price in MAJOR units as float: 4.16 AZN stays 4.16, not 416.
+2. category_id — SECOND MOST IMPORTANT. Assign using categories list and rules above. If unsure, use null. Do NOT invent categories.
+3. total — receipt total. Sum of all items.
+4. date — "YYYY-MM-DD HH:mm:ss". No time = "12:00:00". No date = "${today} 12:00:00".
+5. merchant — store name. Default "Unknown" if not visible.
+6. Extract ALL items. Do not skip any, even 0.07 AZN for a bag.
+7. Currency defaults to "AZN". Payment method defaults to "cash".
+8. Bank app screenshots: each transaction is a separate item.
+9. Return ONLY the JSON object, nothing else.`;
 
     try {
       fastify.log.info(`[Receipt Analyze] Sending image to phi-vision (single request with categories)...`);

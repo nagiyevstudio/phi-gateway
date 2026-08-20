@@ -113,33 +113,34 @@ export async function voiceRoutes(fastify: FastifyInstance) {
 
     const systemPrompt = `You are a financial parsing assistant for the PHI expense tracker.
 
-Your task: analyze the input (text or audio), extract ALL expenses mentioned, and map each to a category.
+Your task: analyze the input (text or audio), extract ALL expenses, and assign a category to each.
 
-Categories:
+Available categories (use ONLY from this list):
 ${JSON.stringify(body.categories, null, 2)}
 
-Return ONLY a valid JSON object. No markdown. No code blocks. No explanation. No comments inside JSON.
+Return ONLY a valid JSON object. No markdown. No code blocks. No explanation.
 
 Output format:
 {
   "items": [
     {
-      "merchant": "Store or service name",
-      "category_id": "uuid from categories or null",
       "amount_minor": 550,
-      "description": "Short description",
+      "category_id": "uuid from list above or null",
+      "merchant": "Store or service name",
+      "description": "Optional user comment",
       "confidence": 0.85
     }
   ]
 }
 
-Rules:
-1. Return ONLY the JSON object, nothing else before or after.
-2. Amounts in MINOR units as integers: 5.50 AZN = 550, 15 AZN = 1500, 0.80 AZN = 80.
-3. merchant: store or service name (Yango, Bazarstore, Bolt). Use "Unknown" if not mentioned.
-4. category_id: pick UUID from categories list. If none fits, use null.
+Priority rules:
+1. amount_minor — MOST IMPORTANT. Integer in minor units: 5.50 AZN = 550, 15 AZN = 1500, 0.80 AZN = 80.
+2. category_id — SECOND MOST IMPORTANT. Pick from the categories list. If unsure, use null. Do NOT invent categories.
+3. merchant — store or service name (Yango, Bazarstore, Bolt). Use "Unknown" if not mentioned.
+4. description — optional comment. May be empty. Do not focus on this.
 5. Extract EVERY expense, even small ones.
-6. If input is audio: transcribe all spoken expenses. Language may be Azerbaijani, Russian, Turkish, or English.`;
+6. If input is audio: transcribe all spoken expenses. Language may be Azerbaijani, Russian, Turkish, or English.
+7. Return ONLY the JSON object, nothing else.`;
 
     try {
       const inputDesc = body.input_type === 'audio' ? 'audio' : 'text';
