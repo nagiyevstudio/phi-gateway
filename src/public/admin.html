@@ -254,40 +254,32 @@
             <div class="glass-panel p-6 rounded-xl space-y-6 lg:col-span-1">
               <div class="border-b border-white/5 pb-4 flex items-center justify-between">
                 <h3 class="font-outfit font-bold text-lg">AI Providers</h3>
-                <button onclick="saveProviders()" class="bg-brand-600 hover:bg-brand-500 px-3 py-1.5 rounded-lg font-medium text-xs transition duration-150">
-                  Save Toggles
-                </button>
+                <div class="flex gap-2">
+                  <button onclick="openAddProviderModal()" class="bg-brand-600 hover:bg-brand-500 px-3 py-1.5 rounded-lg font-medium text-xs transition duration-150 flex items-center gap-1.5">
+                    <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                    <span>Add</span>
+                  </button>
+                  <button onclick="saveProviders()" class="bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-1.5 rounded-lg font-medium text-xs transition duration-150">
+                    Save All
+                  </button>
+                </div>
               </div>
               <div id="providersList" class="space-y-4">
                 <!-- Dynamically populated providers list -->
               </div>
             </div>
 
-            <!-- Models Inventory List -->
-            <div class="glass-panel p-6 rounded-xl space-y-6 lg:col-span-2">
-              <div class="border-b border-white/5 pb-4 flex items-center justify-between">
+            <!-- Models Inventory List (grouped by provider) -->
+            <div class="space-y-6 lg:col-span-2">
+              <div class="flex items-center justify-between">
                 <h3 class="font-outfit font-bold text-lg">Model Inventory</h3>
                 <button onclick="openAddModelModal()" class="bg-brand-600 hover:bg-brand-500 px-4 py-2 rounded-lg font-medium text-sm transition duration-150 flex items-center gap-2">
                   <i data-lucide="plus" class="w-4 h-4"></i>
-                  <span>Add Upstream Model</span>
+                  <span>Add Model</span>
                 </button>
               </div>
-              
-              <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse text-sm">
-                  <thead>
-                    <tr class="border-b border-white/5 text-gray-500 text-xs font-semibold">
-                      <th class="py-3 px-4">Key</th>
-                      <th class="py-3 px-4">Provider</th>
-                      <th class="py-3 px-4">API Model ID</th>
-                      <th class="py-3 px-4">Capabilities</th>
-                      <th class="py-3 px-4 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody id="modelsTableBody" class="divide-y divide-white/5 font-mono">
-                    <!-- Dynamically populated models table -->
-                  </tbody>
-                </table>
+              <div id="modelsByProvider" class="space-y-4">
+                <!-- Dynamically populated grouped models -->
               </div>
             </div>
           </div>
@@ -302,44 +294,8 @@
             </div>
             
             <form id="envForm" class="space-y-4">
-              <div class="space-y-1">
-                <label class="text-xs text-gray-400 font-medium flex items-center justify-between">
-                  <span>OPENROUTER_API_KEY</span>
-                  <span id="envStatus-OPENROUTER_API_KEY" class="text-[10px]">Checking...</span>
-                </label>
-                <input type="password" name="OPENROUTER_API_KEY" class="glass-input w-full px-4 py-2.5 rounded-lg font-mono text-sm" placeholder="Keep unchanged / empty to delete">
-              </div>
-
-              <div class="space-y-1">
-                <label class="text-xs text-gray-400 font-medium flex items-center justify-between">
-                  <span>OPENAI_API_KEY</span>
-                  <span id="envStatus-OPENAI_API_KEY" class="text-[10px]">Checking...</span>
-                </label>
-                <input type="password" name="OPENAI_API_KEY" class="glass-input w-full px-4 py-2.5 rounded-lg font-mono text-sm" placeholder="Keep unchanged / empty to delete">
-              </div>
-
-              <div class="space-y-1">
-                <label class="text-xs text-gray-400 font-medium flex items-center justify-between">
-                  <span>GEMINI_API_KEY</span>
-                  <span id="envStatus-GEMINI_API_KEY" class="text-[10px]">Checking...</span>
-                </label>
-                <input type="password" name="GEMINI_API_KEY" class="glass-input w-full px-4 py-2.5 rounded-lg font-mono text-sm" placeholder="Keep unchanged / empty to delete">
-              </div>
-
-              <div class="space-y-1">
-                <label class="text-xs text-gray-400 font-medium flex items-center justify-between">
-                  <span>ZAI_API_KEY</span>
-                  <span id="envStatus-ZAI_API_KEY" class="text-[10px]">Checking...</span>
-                </label>
-                <input type="password" name="ZAI_API_KEY" class="glass-input w-full px-4 py-2.5 rounded-lg font-mono text-sm" placeholder="Keep unchanged / empty to delete">
-              </div>
-
-              <div class="space-y-1">
-                <label class="text-xs text-gray-400 font-medium flex items-center justify-between">
-                  <span>MISTRAL_API_KEY</span>
-                  <span id="envStatus-MISTRAL_API_KEY" class="text-[10px]">Checking...</span>
-                </label>
-                <input type="password" name="MISTRAL_API_KEY" class="glass-input w-full px-4 py-2.5 rounded-lg font-mono text-sm" placeholder="Keep unchanged / empty to delete">
+              <div id="envKeysContainer">
+                <!-- Dynamically populated from providers config -->
               </div>
 
               <button type="submit" class="bg-brand-600 hover:bg-brand-500 w-full py-3 rounded-lg font-medium text-sm transition duration-150 flex items-center justify-center gap-2">
@@ -449,6 +405,8 @@
             <label class="flex items-center gap-2"><input type="checkbox" value="pdf_input"> pdf_input</label>
             <label class="flex items-center gap-2"><input type="checkbox" value="structured_output"> structured_output</label>
             <label class="flex items-center gap-2"><input type="checkbox" value="transcription"> transcription</label>
+            <label class="flex items-center gap-2"><input type="checkbox" value="tool_calling"> tool_calling</label>
+            <label class="flex items-center gap-2"><input type="checkbox" value="reasoning"> reasoning</label>
             <label class="flex items-center gap-2"><input type="checkbox" value="fast"> fast</label>
           </div>
         </div>
@@ -457,6 +415,57 @@
           <button type="submit" id="modelSubmitBtn" class="px-4 py-2 bg-brand-600 hover:bg-brand-500 rounded-lg text-sm font-semibold transition">Add Model</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- 3b. Add Provider Modal -->
+  <div id="addProviderModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm hidden">
+    <div class="glass-panel w-full max-w-md p-6 rounded-2xl space-y-6 mx-4">
+      <h3 class="text-xl font-outfit font-bold" id="addProviderModalTitle">Add Provider</h3>
+      <form id="addProviderForm" class="space-y-4">
+        <div class="space-y-1">
+          <label class="text-xs text-gray-400 font-medium">Provider Key (unique identifier)</label>
+          <input type="text" id="providerKeyInput" required class="glass-input w-full px-3 py-2 rounded-lg text-sm" placeholder="e.g. deepseek, together, groq">
+        </div>
+        <div class="space-y-1">
+          <label class="text-xs text-gray-400 font-medium">Base URL</label>
+          <input type="url" id="providerBaseUrlInput" required class="glass-input w-full px-3 py-2 rounded-lg text-sm" placeholder="https://api.example.com/v1">
+        </div>
+        <div class="space-y-1">
+          <label class="text-xs text-gray-400 font-medium">API Key Environment Variable Name</label>
+          <input type="text" id="providerKeyEnvInput" required class="glass-input w-full px-3 py-2 rounded-lg text-sm" placeholder="e.g. DEEPSEEK_API_KEY">
+        </div>
+        <div class="space-y-1">
+          <label class="text-xs text-gray-400 font-medium">Timeout (ms)</label>
+          <input type="number" id="providerTimeoutInput" value="60000" class="glass-input w-full px-3 py-2 rounded-lg text-sm">
+        </div>
+        <div class="flex items-center gap-3">
+          <label class="text-xs text-gray-400 font-medium">Enabled</label>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="providerEnabledInput" checked class="sr-only peer">
+            <div class="w-9 h-5 bg-white/10 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-brand-600"></div>
+          </label>
+        </div>
+        <div class="flex gap-3 justify-end pt-2">
+          <button type="button" onclick="closeAddProviderModal()" class="px-4 py-2 border border-white/10 hover:bg-white/5 rounded-lg text-sm font-semibold transition">Cancel</button>
+          <button type="submit" id="providerSubmitBtn" class="px-4 py-2 bg-brand-600 hover:bg-brand-500 rounded-lg text-sm font-semibold transition">Add Provider</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 3c. Test Result Modal -->
+  <div id="testResultModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm hidden">
+    <div class="glass-panel w-full max-w-lg p-6 rounded-2xl space-y-5 mx-4">
+      <div class="flex items-center justify-between">
+        <h3 class="text-xl font-outfit font-bold">Model Test Result</h3>
+        <button onclick="closeTestResultModal()" class="p-1.5 hover:bg-white/5 rounded-lg text-gray-400 hover:text-white transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div id="testResultContent" class="space-y-4">
+        <!-- Populated dynamically -->
+      </div>
     </div>
   </div>
 
@@ -829,58 +838,326 @@
       }
     }
 
-    // Render Providers list and models list
+    // Render Providers list and models grouped by provider
     function renderProvidersAndModels() {
       // Providers
       const providersDiv = document.getElementById('providersList');
       providersDiv.innerHTML = '';
 
       Object.entries(globalConfig.providers).forEach(([provName, pInfo]) => {
+        const modelCount = Object.entries(globalConfig.models).filter(([_, m]) => m.provider === provName).length;
         const div = document.createElement('div');
-        div.className = 'p-4 rounded-xl border border-white/5 bg-white/[0.01] hover:bg-white/[0.02] flex items-center justify-between transition-colors';
+        div.className = 'p-4 rounded-xl border border-white/5 bg-white/[0.01] hover:bg-white/[0.02] transition-colors space-y-2';
         div.innerHTML = `
-          <div class="space-y-1">
+          <div class="flex items-center justify-between">
             <div class="font-outfit font-bold capitalize text-sm flex items-center gap-1.5">
               <span>${provName}</span>
               <span class="w-1.5 h-1.5 rounded-full ${pInfo.enabled ? 'bg-green-500' : 'bg-gray-600'}"></span>
             </div>
-            <div class="text-[10px] text-gray-500 font-mono">${pInfo.base_url}</div>
+            <div class="flex items-center gap-2">
+              <span class="text-[10px] text-gray-500">${modelCount} model${modelCount !== 1 ? 's' : ''}</span>
+              <button onclick="openEditProviderModal('${provName}')" title="Edit provider" class="p-1 border border-brand-500/10 hover:bg-brand-500/10 rounded text-brand-400 hover:text-brand-300 transition">
+                <i data-lucide="edit-3" class="w-3 h-3"></i>
+              </button>
+              <button onclick="deleteProvider('${provName}')" title="Delete provider" class="p-1 border border-red-500/10 hover:bg-red-500/10 rounded text-red-500 hover:text-red-400 transition">
+                <i data-lucide="trash-2" class="w-3 h-3"></i>
+              </button>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" onchange="toggleProviderEnabled('${provName}', this.checked)" ${pInfo.enabled ? 'checked' : ''} class="sr-only peer">
+                <div class="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-gray-300 after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-brand-600"></div>
+              </label>
+            </div>
           </div>
-          <label class="relative inline-flex items-center cursor-pointer">
-            <input type="checkbox" onchange="toggleProviderEnabled('${provName}', this.checked)" ${pInfo.enabled ? 'checked' : ''} class="sr-only peer">
-            <div class="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-gray-300 after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-brand-600"></div>
-          </label>
+          <div class="text-[10px] text-gray-500 font-mono truncate">${pInfo.base_url}</div>
+          <div class="text-[10px] text-gray-600 font-mono">${pInfo.api_key_env}</div>
         `;
         providersDiv.appendChild(div);
       });
 
-      // Models
-      const tbody = document.getElementById('modelsTableBody');
-      tbody.innerHTML = '';
+      // Models grouped by provider
+      const container = document.getElementById('modelsByProvider');
+      container.innerHTML = '';
+
+      // Group models by provider
+      const grouped = {};
       Object.entries(globalConfig.models).forEach(([mkey, mInfo]) => {
-        const tr = document.createElement('tr');
-        tr.className = 'hover:bg-white/[0.01] transition-colors';
-        tr.innerHTML = `
-          <td class="py-3 px-4 text-brand-300 font-semibold">${mkey}</td>
-          <td class="py-3 px-4 capitalize">${mInfo.provider}</td>
-          <td class="py-3 px-4 text-xs text-gray-400">${mInfo.api_model_id}</td>
-          <td class="py-3 px-4"><span class="text-[10px] text-gray-500">${mInfo.capabilities.join(', ')}</span></td>
-          <td class="py-3 px-4 text-right">
-            <button onclick="openEditModelModal('${mkey}')" class="p-1.5 border border-brand-500/10 hover:bg-brand-500/10 rounded-lg text-brand-400 hover:text-brand-300 transition mr-1">
-              <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
-            </button>
-            <button onclick="deleteModel('${mkey}')" class="p-1.5 border border-red-500/10 hover:bg-red-500/10 rounded-lg text-red-500 hover:text-red-400 transition">
-              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-            </button>
-          </td>
-        `;
-        tbody.appendChild(tr);
+        if (!grouped[mInfo.provider]) grouped[mInfo.provider] = [];
+        grouped[mInfo.provider].push({ key: mkey, ...mInfo });
       });
+
+      // Render each provider group
+      Object.entries(globalConfig.providers).forEach(([provName, pInfo]) => {
+        const models = grouped[provName] || [];
+        const card = document.createElement('div');
+        card.className = 'glass-panel rounded-xl overflow-hidden';
+
+        let modelsHtml = '';
+        if (models.length === 0) {
+          modelsHtml = `<div class="px-5 py-6 text-center text-gray-500 text-xs">No models configured for this provider.</div>`;
+        } else {
+          modelsHtml = `<table class="w-full text-left text-sm">
+            <thead>
+              <tr class="border-b border-white/5 text-gray-500 text-[10px] uppercase tracking-wider">
+                <th class="px-5 py-2.5">Key</th>
+                <th class="px-5 py-2.5">API Model ID</th>
+                <th class="px-5 py-2.5">Capabilities</th>
+                <th class="px-5 py-2.5 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-white/5 font-mono">`;
+          models.forEach(m => {
+            const capsHtml = m.capabilities.map(c => `<span class="inline-block px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[9px] text-gray-400 mr-1 mb-0.5">${c}</span>`).join('');
+            modelsHtml += `
+              <tr class="hover:bg-white/[0.02] transition-colors">
+                <td class="px-5 py-2.5 text-brand-300 font-semibold text-xs">${m.key}</td>
+                <td class="px-5 py-2.5 text-xs text-gray-400">${m.api_model_id}</td>
+                <td class="px-5 py-2.5">${capsHtml}</td>
+                <td class="px-5 py-2.5 text-right whitespace-nowrap">
+                  <button onclick="testModel('${m.key}')" title="Test model" class="p-1.5 border border-green-500/10 hover:bg-green-500/10 rounded-lg text-green-400 hover:text-green-300 transition mr-1">
+                    <i data-lucide="play" class="w-3.5 h-3.5"></i>
+                  </button>
+                  <button onclick="openEditModelModal('${m.key}')" title="Edit model" class="p-1.5 border border-brand-500/10 hover:bg-brand-500/10 rounded-lg text-brand-400 hover:text-brand-300 transition mr-1">
+                    <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+                  </button>
+                  <button onclick="deleteModel('${m.key}')" title="Delete model" class="p-1.5 border border-red-500/10 hover:bg-red-500/10 rounded-lg text-red-500 hover:text-red-400 transition">
+                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                  </button>
+                </td>
+              </tr>`;
+          });
+          modelsHtml += `</tbody></table>`;
+        }
+
+        card.innerHTML = `
+          <div class="px-5 py-3 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full ${pInfo.enabled ? 'bg-green-500' : 'bg-gray-600'}"></span>
+              <span class="font-outfit font-bold text-sm capitalize">${provName}</span>
+              <span class="text-[10px] text-gray-500 font-mono">(${models.length})</span>
+            </div>
+          </div>
+          ${modelsHtml}
+        `;
+        container.appendChild(card);
+      });
+
+      // Show ungrouped models (provider not in providers list)
+      Object.entries(grouped).forEach(([provName, models]) => {
+        if (!globalConfig.providers[provName]) {
+          const card = document.createElement('div');
+          card.className = 'glass-panel rounded-xl overflow-hidden border border-yellow-500/20';
+          let modelsHtml = `<table class="w-full text-left text-sm"><tbody class="divide-y divide-white/5 font-mono">`;
+          models.forEach(m => {
+            const capsHtml = m.capabilities.map(c => `<span class="inline-block px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[9px] text-gray-400 mr-1 mb-0.5">${c}</span>`).join('');
+            modelsHtml += `
+              <tr class="hover:bg-white/[0.02] transition-colors">
+                <td class="px-5 py-2.5 text-brand-300 font-semibold text-xs">${m.key}</td>
+                <td class="px-5 py-2.5 text-xs text-gray-400">${m.api_model_id}</td>
+                <td class="px-5 py-2.5">${capsHtml}</td>
+                <td class="px-5 py-2.5 text-right whitespace-nowrap">
+                  <button onclick="testModel('${m.key}')" title="Test model" class="p-1.5 border border-green-500/10 hover:bg-green-500/10 rounded-lg text-green-400 hover:text-green-300 transition mr-1">
+                    <i data-lucide="play" class="w-3.5 h-3.5"></i>
+                  </button>
+                  <button onclick="openEditModelModal('${m.key}')" title="Edit model" class="p-1.5 border border-brand-500/10 hover:bg-brand-500/10 rounded-lg text-brand-400 hover:text-brand-300 transition mr-1">
+                    <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+                  </button>
+                  <button onclick="deleteModel('${m.key}')" title="Delete model" class="p-1.5 border border-red-500/10 hover:bg-red-500/10 rounded-lg text-red-500 hover:text-red-400 transition">
+                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                  </button>
+                </td>
+              </tr>`;
+          });
+          modelsHtml += `</tbody></table>`;
+          card.innerHTML = `
+            <div class="px-5 py-3 border-b border-white/5 flex items-center gap-2 bg-yellow-500/5">
+              <span class="w-2 h-2 rounded-full bg-yellow-500"></span>
+              <span class="font-outfit font-bold text-sm capitalize text-yellow-400">${provName}</span>
+              <span class="text-[10px] text-yellow-500/60">(provider missing)</span>
+            </div>
+            ${modelsHtml}
+          `;
+          container.appendChild(card);
+        }
+      });
+
       lucide.createIcons();
     }
 
     function toggleProviderEnabled(provider, val) {
       globalConfig.providers[provider].enabled = val;
+    }
+
+    // Add Provider Modal
+    function openAddProviderModal() {
+      document.getElementById('addProviderModalTitle').innerText = 'Add Provider';
+      document.getElementById('providerSubmitBtn').innerText = 'Add Provider';
+      document.getElementById('addProviderForm').reset();
+      document.getElementById('providerEnabledInput').checked = true;
+      document.getElementById('providerKeyInput').disabled = false;
+      document.getElementById('providerKeyInput').classList.remove('bg-darkbg', 'text-gray-500');
+      editingProviderKey = null;
+      document.getElementById('addProviderModal').classList.remove('hidden');
+    }
+
+    function openEditProviderModal(provName) {
+      const pInfo = globalConfig.providers[provName];
+      if (!pInfo) return;
+      editingProviderKey = provName;
+      document.getElementById('addProviderModalTitle').innerText = 'Edit Provider';
+      document.getElementById('providerSubmitBtn').innerText = 'Save Provider';
+      document.getElementById('providerKeyInput').value = provName;
+      document.getElementById('providerKeyInput').disabled = true;
+      document.getElementById('providerKeyInput').classList.add('bg-darkbg', 'text-gray-500');
+      document.getElementById('providerBaseUrlInput').value = pInfo.base_url;
+      document.getElementById('providerKeyEnvInput').value = pInfo.api_key_env;
+      document.getElementById('providerTimeoutInput').value = pInfo.timeout_ms || 60000;
+      document.getElementById('providerEnabledInput').checked = pInfo.enabled;
+      document.getElementById('addProviderModal').classList.remove('hidden');
+    }
+
+    function closeAddProviderModal() {
+      document.getElementById('addProviderModal').classList.add('hidden');
+      editingProviderKey = null;
+    }
+
+    async function deleteProvider(provName) {
+      const modelCount = Object.entries(globalConfig.models).filter(([_, m]) => m.provider === provName).length;
+      const msg = modelCount > 0
+        ? `Delete provider '${provName}'? It has ${modelCount} model(s) that will also be removed.`
+        : `Delete provider '${provName}'?`;
+      if (!confirm(msg)) return;
+
+      delete globalConfig.providers[provName];
+      // Also remove models belonging to this provider
+      Object.entries(globalConfig.models).forEach(([k, m]) => {
+        if (m.provider === provName) delete globalConfig.models[k];
+      });
+
+      try {
+        const res = await fetch('/admin/api/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+          body: JSON.stringify({ providers: globalConfig.providers, models: globalConfig.models })
+        });
+        const body = await res.json();
+        if (body.success) {
+          fetchConfigs();
+        } else {
+          alert(body.error.message);
+        }
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    let editingProviderKey = null;
+
+    document.getElementById('addProviderForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const provKey = editingProviderKey || document.getElementById('providerKeyInput').value.trim();
+      const baseUrl = document.getElementById('providerBaseUrlInput').value.trim();
+      const apiKeyEnv = document.getElementById('providerKeyEnvInput').value.trim();
+      const timeoutMs = parseInt(document.getElementById('providerTimeoutInput').value) || 60000;
+      const enabled = document.getElementById('providerEnabledInput').checked;
+
+      if (!provKey || !baseUrl || !apiKeyEnv) return;
+
+      globalConfig.providers[provKey] = { enabled, base_url: baseUrl, api_key_env: apiKeyEnv, timeout_ms: timeoutMs };
+
+      try {
+        const res = await fetch('/admin/api/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+          body: JSON.stringify({ providers: globalConfig.providers, models: globalConfig.models })
+        });
+        const body = await res.json();
+        if (body.success) {
+          closeAddProviderModal();
+          fetchConfigs();
+        } else {
+          alert(body.error.message);
+        }
+      } catch (err) {
+        alert(err.message);
+      }
+    });
+
+    // Test Model
+    async function testModel(modelKey) {
+      const contentDiv = document.getElementById('testResultContent');
+      contentDiv.innerHTML = `
+        <div class="flex items-center justify-center py-8 gap-3 text-gray-400">
+          <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+          <span class="text-sm">Testing <strong class="text-white font-mono">${modelKey}</strong>...</span>
+        </div>
+      `;
+      document.getElementById('testResultModal').classList.remove('hidden');
+
+      try {
+        const res = await fetch('/admin/api/models/test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+          body: JSON.stringify({ model_key: modelKey })
+        });
+        const body = await res.json();
+        const d = body.data || {};
+
+        if (body.success && d.status === 'ok') {
+          contentDiv.innerHTML = `
+            <div class="flex items-center gap-3 p-4 rounded-xl bg-green-500/10 border border-green-500/20">
+              <i data-lucide="check-circle" class="w-6 h-6 text-green-400 shrink-0"></i>
+              <div>
+                <div class="text-sm font-semibold text-green-400">Success</div>
+                <div class="text-xs text-gray-400">${d.provider} / ${d.api_model_id}</div>
+              </div>
+              <div class="ml-auto text-right">
+                <div class="text-lg font-outfit font-bold text-green-400">${d.duration_ms}ms</div>
+              </div>
+            </div>
+            <div class="space-y-1">
+              <div class="text-xs text-gray-500 font-medium">Response Preview</div>
+              <div class="p-3 rounded-lg bg-black/30 border border-white/5 font-mono text-xs text-gray-300 whitespace-pre-wrap break-all">${esc(d.response_preview)}</div>
+            </div>
+          `;
+        } else {
+          contentDiv.innerHTML = `
+            <div class="flex items-center gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/20">
+              <i data-lucide="x-circle" class="w-6 h-6 text-red-400 shrink-0"></i>
+              <div>
+                <div class="text-sm font-semibold text-red-400">Failed</div>
+                <div class="text-xs text-gray-400">${d.provider || ''} / ${d.api_model_id || modelKey}</div>
+              </div>
+              ${d.duration_ms ? `<div class="ml-auto text-right"><div class="text-lg font-outfit font-bold text-red-400">${d.duration_ms}ms</div></div>` : ''}
+            </div>
+            <div class="space-y-1">
+              <div class="text-xs text-gray-500 font-medium">Error</div>
+              <div class="p-3 rounded-lg bg-red-500/5 border border-red-500/10 font-mono text-xs text-red-300 whitespace-pre-wrap break-all">${esc(d.error_message || body.error?.message || 'Unknown error')}</div>
+            </div>
+          `;
+        }
+        lucide.createIcons();
+      } catch (err) {
+        contentDiv.innerHTML = `
+          <div class="flex items-center gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/20">
+            <i data-lucide="x-circle" class="w-6 h-6 text-red-400 shrink-0"></i>
+            <div class="text-sm font-semibold text-red-400">Request Failed</div>
+          </div>
+          <div class="p-3 rounded-lg bg-red-500/5 border border-red-500/10 font-mono text-xs text-red-300">${esc(err.message)}</div>
+        `;
+        lucide.createIcons();
+      }
+    }
+
+    function closeTestResultModal() {
+      document.getElementById('testResultModal').classList.add('hidden');
+    }
+
+    // Escape HTML helper
+    function esc(str) {
+      if (!str) return '';
+      const d = document.createElement('div');
+      d.textContent = String(str);
+      return d.innerHTML;
     }
 
     async function saveProviders() {
@@ -1042,18 +1319,39 @@
         }
         const body = await res.json();
         if (body.success) {
-          const envStatus = body.envStatus;
-          Object.entries(envStatus).forEach(([k, isSet]) => {
-            const el = document.getElementById(`envStatus-${k}`);
-            if (el) {
-              if (isSet) {
-                el.innerText = 'Key Configured (Active)';
-                el.className = 'text-[10px] text-green-400 font-medium';
-              } else {
-                el.innerText = 'Key Missing (Empty)';
-                el.className = 'text-[10px] text-yellow-500 font-medium';
-              }
-            }
+          const envStatus = body.envStatus || {};
+          const providers = body.data?.providers || globalConfig?.providers || {};
+
+          // Collect unique env var names from providers
+          const envVars = new Set();
+          Object.values(providers).forEach(p => {
+            if (p.api_key_env) envVars.add(p.api_key_env);
+          });
+          // Also add common ones
+          ['OPENROUTER_API_KEY', 'GEMINI_API_KEY', 'OPENAI_API_KEY', 'ZAI_API_KEY', 'MISTRAL_API_KEY', 'DASHSCOPE_API_KEY'].forEach(k => envVars.add(k));
+
+          const container = document.getElementById('envKeysContainer');
+          container.innerHTML = '';
+
+          // Sort: configured first, then missing
+          const sorted = [...envVars].sort((a, b) => {
+            const aSet = envStatus[a] ? 0 : 1;
+            const bSet = envStatus[b] ? 0 : 1;
+            return aSet - bSet || a.localeCompare(b);
+          });
+
+          sorted.forEach(k => {
+            const isSet = !!envStatus[k];
+            const div = document.createElement('div');
+            div.className = 'space-y-1';
+            div.innerHTML = `
+              <label class="text-xs text-gray-400 font-medium flex items-center justify-between">
+                <span>${k}</span>
+                <span class="text-[10px] ${isSet ? 'text-green-400' : 'text-yellow-500'} font-medium">${isSet ? 'Key Configured (Active)' : 'Key Missing (Empty)'}</span>
+              </label>
+              <input type="password" name="${k}" class="glass-input w-full px-4 py-2.5 rounded-lg font-mono text-sm" placeholder="Keep unchanged / empty to delete">
+            `;
+            container.appendChild(div);
           });
         }
       } catch (err) {

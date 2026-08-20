@@ -14,6 +14,8 @@ import {
   saveModelAliases,
   ClientRecord
 } from '../config';
+import { callOpenAICompat } from '../adapters/openai-compat';
+import { callGemini } from '../adapters/gemini';
 
 // Helper to locate the env file (.env locally or phi-gateway.env on VPS)
 function getEnvFilePath(): string {
@@ -269,6 +271,106 @@ export const adminRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) 
     } catch (error: any) {
       reply.status(500);
       return { success: false, error: { code: 'client_delete_error', message: error.message } };
+    }
+  });
+
+  // 8. Test a model by sending a simple prompt
+  fastify.post('/api/models/test', async (request, reply) => {
+    const { model_key } = request.body as { model_key: string };
+
+    if (!model_key) {
+      reply.status(400);
+      return { success: false, error: { code: 'bad_request', message: 'Missing model_key.' } };
+    }
+
+    const models = getModels();
+    const providers = getProviders();
+    const modelInfo = models[model_key];
+
+    if (!modelInfo) {
+      reply.status(404);
+      return { success: false, error: { code: 'model_not_found', message: `Model '${model_key}' not found.` } };
+    }
+
+    const providerInfo = providers[modelInfo.provider];
+    if (!providerInfo) {
+      reply.status(400);
+      return { success: false, error: { code: 'provider_not_found', message: `Provider '${modelInfo.provider}' not found.` } };
+    }
+
+    if (!providerInfo.enabled) {
+      return { success: false, error: { code: 'provider_disabled', message: `Provider '${modelInfo.provider}' is disabled.` } };
+    }
+
+    const apiKey = process.env[providerInfo.api_key_env];
+    if (!apiKey) {
+      return { success: false, error: { code: 'api_key_missing', message: `API key '${providerInfo.api_key_env}' is not set.` } };
+    }
+
+    const testPayload = {
+      model: modelInfo.api_model_id,
+      messages: [
+        { role: 'user', content: 'Reply with exactly: "PHI Gateway test OK"' }
+      ],
+      max_tokens: 50,
+      temperature: 0
+    };
+
+    const startTime = process.hrtime();
+
+    try {
+      let result: any;
+      if (modelInfo.provider === 'google') {
+        result = await callGemini(
+          modelInfo.api_model_id,
+          apiKey,
+          providerInfo.base_url,
+          testPayload as any,
+          'admin-test',
+          providerInfo.timeout_ms || 30000
+        );
+      } else {
+        result = await callOpenAICompat(
+          modelInfo.api_model_id,
+          apiKey,
+          providerInfo.base_url,
+          testPayload as any,
+          'admin-test',
+          providerInfo.timeout_ms || 30000
+        );
+      }
+
+      const diff = process.hrtime(startTime);
+      const durationMs = Math.round(diff[0] * 1e3 + diff[1] * 1e-6);
+
+      const content = result?.choices?.[0]?.message?.content || result?.content || JSON.stringify(result).slice(0, 200);
+
+      return {
+        success: true,
+        data: {
+          model_key,
+          provider: modelInfo.provider,
+          api_model_id: modelInfo.api_model_id,
+          status: 'ok',
+          duration_ms: durationMs,
+          response_preview: typeof content === 'string' ? content.slice(0, 300) : JSON.stringify(content).slice(0, 300)
+        }
+      };
+    } catch (error: any) {
+      const diff = process.hrtime(startTime);
+      const durationMs = Math.round(diff[0] * 1e3 + diff[1] * 1e-6);
+
+      return {
+        success: false,
+        data: {
+          model_key,
+          provider: modelInfo.provider,
+          api_model_id: modelInfo.api_model_id,
+          status: 'error',
+          duration_ms: durationMs,
+          error_message: error.message || String(error)
+        }
+      };
     }
   });
 };
