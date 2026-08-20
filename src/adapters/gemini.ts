@@ -80,7 +80,15 @@ export function mapOpenAIToGemini(request: OpenAICompletionRequest): GeminiReque
             console.warn('[Gemini Adapter] External image URLs not supported natively by inline data, skipping or needs downloading.');
           }
         } else if (part.type === 'input_audio' && part.input_audio?.data) {
-          const mimeType = part.input_audio.format === 'wav' ? 'audio/wav' : 'audio/mp3';
+          const formatToMime: Record<string, string> = {
+            'wav': 'audio/wav',
+            'mp3': 'audio/mp3',
+            'webm': 'audio/webm',
+            'ogg': 'audio/ogg',
+            'flac': 'audio/flac',
+            'm4a': 'audio/mp4'
+          };
+          const mimeType = formatToMime[part.input_audio.format] || `audio/${part.input_audio.format}`;
           parts.push({
             inlineData: {
               mimeType,

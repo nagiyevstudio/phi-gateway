@@ -13,7 +13,7 @@ export interface ChatMessagePart {
   };
   input_audio?: {
     data: string; // base64
-    format: 'wav' | 'mp3';
+    format: string; // 'wav' | 'mp3' | 'webm' | 'ogg' | 'flac' | 'm4a'
   };
 }
 

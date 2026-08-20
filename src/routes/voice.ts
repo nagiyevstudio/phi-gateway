@@ -59,6 +59,18 @@ export async function voiceRoutes(fastify: FastifyInstance) {
       }
 
       const mimeType = body.mime_type || 'audio/webm';
+      const formatMap: Record<string, string> = {
+        'audio/webm': 'webm',
+        'audio/ogg': 'ogg',
+        'audio/wav': 'wav',
+        'audio/x-wav': 'wav',
+        'audio/mp3': 'mp3',
+        'audio/mpeg': 'mp3',
+        'audio/mp4': 'm4a',
+        'audio/m4a': 'm4a',
+        'audio/flac': 'flac'
+      };
+      const audioFormat = formatMap[mimeType] || 'wav';
       
       try {
         fastify.log.info({ mimeType }, `[Voice Parse] Transcribing audio with phi-audio-transcriber...`);
@@ -73,9 +85,10 @@ export async function voiceRoutes(fastify: FastifyInstance) {
                   text: 'Transcribe this audio precisely. Return ONLY the transcribed text. Do not add any greeting, comments, markdown, or explanation. If there is no speech, return an empty string.'
                 },
                 {
-                  type: 'image_url', // using image_url field since our gemini/openai-compat adapter maps data URLs to inlineData/parts
-                  image_url: {
-                    url: `data:${mimeType};base64,${body.audio_base64}`
+                  type: 'input_audio',
+                  input_audio: {
+                    data: body.audio_base64,
+                    format: audioFormat
                   }
                 }
               ]
