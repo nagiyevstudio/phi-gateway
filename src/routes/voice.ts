@@ -126,8 +126,7 @@ Output format:
     {
       "amount_minor": 550,
       "category_id": "uuid from list above or null",
-      "merchant": "Store or service name",
-      "description": "Optional user comment",
+      "description": "taxi Yango 5.50",
       "confidence": 0.85
     }
   ]
@@ -136,11 +135,10 @@ Output format:
 Priority rules:
 1. amount_minor — MOST IMPORTANT. Integer in minor units: 5.50 AZN = 550, 15 AZN = 1500, 0.80 AZN = 80.
 2. category_id — SECOND MOST IMPORTANT. Pick from the categories list. If unsure, use null. Do NOT invent categories.
-3. merchant — store or service name (Yango, Bazarstore, Bolt). Use "Unknown" if not mentioned.
-4. description — optional comment. May be empty. Do not focus on this.
-5. Extract EVERY expense, even small ones.
-6. If input is audio: transcribe all spoken expenses. Language may be Azerbaijani, Russian, Turkish, or English.
-7. Return ONLY the JSON object, nothing else.`;
+3. description — short text: what was spent on + where. Example: "taxi Yango", "grocery Bazarstore", "coffee Starbucks". Combine merchant name and what was bought into one field.
+4. Extract EVERY expense, even small ones.
+5. If input is audio: transcribe all spoken expenses. Language may be Azerbaijani, Russian, Turkish, or English.
+6. Return ONLY the JSON object, nothing else.`;
 
     try {
       const inputDesc = body.input_type === 'audio' ? 'audio' : 'text';
@@ -172,7 +170,6 @@ Priority rules:
       const items = parsedResponse.items || [];
       
       const finalItems = items.map(item => ({
-        merchant: item.merchant || 'Unknown',
         category_id: typeof item.category_id === 'string' ? item.category_id : null,
         amount_minor: Math.round(Number(item.amount_minor) || 0),
         description: item.description || '',
