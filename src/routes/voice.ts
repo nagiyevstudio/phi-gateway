@@ -15,6 +15,18 @@ interface VoiceParseRequest {
   categories: Category[];
 }
 
+const FORMAT_MAP: Record<string, string> = {
+  'audio/webm': 'webm',
+  'audio/ogg': 'ogg',
+  'audio/wav': 'wav',
+  'audio/x-wav': 'wav',
+  'audio/mp3': 'mp3',
+  'audio/mpeg': 'mp3',
+  'audio/mp4': 'm4a',
+  'audio/m4a': 'm4a',
+  'audio/flac': 'flac'
+};
+
 export async function voiceRoutes(fastify: FastifyInstance) {
   
   fastify.addHook('preHandler', authenticateRequest);
@@ -33,10 +45,20 @@ export async function voiceRoutes(fastify: FastifyInstance) {
     }
 
     const allowedAliases = request.client?.allowed_model_aliases || [];
-    let transcript = '';
-    let transcriptionUsed = false;
 
-    // 1. Transcription Phase
+    if (!allowedAliases.includes('phi-parser')) {
+      return reply.status(403).send({
+        success: false,
+        error: {
+          code: 'forbidden',
+          message: "Client is not allowed to use model alias 'phi-parser'."
+        }
+      });
+    }
+
+    // Build user message based on input type
+    const userContent: any[] = [];
+
     if (body.input_type === 'audio') {
       if (!body.audio_base64) {
         return reply.status(400).send({
@@ -48,69 +70,21 @@ export async function voiceRoutes(fastify: FastifyInstance) {
         });
       }
 
-      if (!allowedAliases.includes('phi-audio-transcriber')) {
-        return reply.status(403).send({
-          success: false,
-          error: {
-            code: 'forbidden',
-            message: "Client is not allowed to use model alias 'phi-audio-transcriber'."
-          }
-        });
-      }
-
       const mimeType = body.mime_type || 'audio/webm';
-      const formatMap: Record<string, string> = {
-        'audio/webm': 'webm',
-        'audio/ogg': 'ogg',
-        'audio/wav': 'wav',
-        'audio/x-wav': 'wav',
-        'audio/mp3': 'mp3',
-        'audio/mpeg': 'mp3',
-        'audio/mp4': 'm4a',
-        'audio/m4a': 'm4a',
-        'audio/flac': 'flac'
-      };
-      const audioFormat = formatMap[mimeType] || 'wav';
-      
-      try {
-        fastify.log.info({ mimeType }, `[Voice Parse] Transcribing audio with phi-audio-transcriber...`);
-        const transcriptionResult = await resolveAndExecuteCompletion({
-          model: 'phi-audio-transcriber',
-          messages: [
-            {
-              role: 'user',
-              content: [
-                {
-                  type: 'text',
-                  text: 'Transcribe this audio precisely. Return ONLY the transcribed text. Do not add any greeting, comments, markdown, or explanation. If there is no speech, return an empty string.'
-                },
-                {
-                  type: 'input_audio',
-                  input_audio: {
-                    data: body.audio_base64,
-                    format: audioFormat
-                  }
-                }
-              ]
-            }
-          ],
-          temperature: 0
-        }, allowedAliases, request);
+      const audioFormat = FORMAT_MAP[mimeType] || 'wav';
 
-        transcript = transcriptionResult.choices[0]?.message?.content?.trim() || '';
-        transcriptionUsed = true;
-        fastify.log.info({ transcriptLength: transcript.length }, `[Voice Parse] Audio transcription completed.`);
-      } catch (transcribeErr: any) {
-        fastify.log.error(transcribeErr, `[Voice Parse] Transcription failed.`);
-        return reply.status(502).send({
-          success: false,
-          error: {
-            code: 'transcription_failed',
-            message: 'Audio transcription failed.',
-            details: transcribeErr.message || String(transcribeErr)
-          }
-        });
-      }
+      userContent.push({
+        type: 'input_audio',
+        input_audio: {
+          data: body.audio_base64,
+          format: audioFormat
+        }
+      });
+      userContent.push({
+        type: 'text',
+        text: 'Listen to this audio. The speaker describes their expenses in natural speech (may be in Azerbaijani, Russian, Turkish, or English). Transcribe and parse all expenses into structured JSON.'
+      });
+
     } else if (body.input_type === 'text') {
       if (!body.text) {
         return reply.status(400).send({
@@ -121,7 +95,12 @@ export async function voiceRoutes(fastify: FastifyInstance) {
           }
         });
       }
-      transcript = body.text;
+
+      userContent.push({
+        type: 'text',
+        text: `Parse these expenses: "${body.text}"`
+      });
+
     } else {
       return reply.status(400).send({
         success: false,
@@ -132,70 +111,48 @@ export async function voiceRoutes(fastify: FastifyInstance) {
       });
     }
 
-    if (!transcript.trim()) {
-      return {
-        success: true,
-        data: {
-          items: [],
-          diagnostics: {
-            transcription_used: transcriptionUsed,
-            model: 'phi-parser',
-            empty_transcript: true
-          }
-        }
-      };
-    }
+    const systemPrompt = `You are a financial parsing assistant for the PHI expense tracker.
 
-    // 2. Parsers/LLM Extraction Phase
-    if (!allowedAliases.includes('phi-parser')) {
-      return reply.status(403).send({
-        success: false,
-        error: {
-          code: 'forbidden',
-          message: "Client is not allowed to use model alias 'phi-parser'."
-        }
-      });
-    }
+Your task: analyze the input (text or audio), extract ALL expenses mentioned, and map each to a category.
 
-    const systemPrompt = `You are a financial parsing assistant.
-Your task is to analyze the user's transcript describing expenses, extract transaction details, and map each transaction to a category ID from the provided categories list.
-
-Categories list:
+Categories:
 ${JSON.stringify(body.categories, null, 2)}
 
-You must return a raw JSON object matching the following structure. Do not wrap in markdown block.
+Return ONLY a raw JSON object. No markdown, no code blocks, no explanation.
 
-Expected JSON output format:
 {
   "items": [
     {
-      "merchant": "Merchant Name", // store or service name (e.g. "Yango", "Bazarstore", "Bolt"). Use "Unknown" if not mentioned.
-      "category_id": "category-id-uuid-or-null", // Select ONLY from provided category IDs. Return null if none fit.
-      "amount_minor": 550, // Integer in minor units (e.g. 5.50 AZN -> 550)
-      "description": "Short description of expense",
+      "merchant": "Store or service name (e.g. Yango, Bazarstore, Bolt). Use "Unknown" if not mentioned.",
+      "category_id": "UUID from categories list, or null if none fit",
+      "amount_minor": 550,
+      "description": "Short description",
       "confidence": 0.85
     }
   ]
 }
 
 Rules:
-1. Return only the raw JSON. Do not wrap in markdown or backticks.
-2. Convert all amounts to minor units as an integer (e.g. 15 AZN -> 1500, 4.50 AZN -> 450).
-3. If no category clearly fits, return null for category_id.`;
+1. Return ONLY the JSON object.
+2. Amounts in minor units (5.50 AZN → 550, 15 AZN → 1500).
+3. If no category fits, use null.
+4. Extract EVERY expense mentioned, even small ones.`;
 
     try {
-      fastify.log.info({ transcript }, `[Voice Parse] Parsing transcript via phi-parser...`);
-      const parsingResult = await resolveAndExecuteCompletion({
+      const inputDesc = body.input_type === 'audio' ? 'audio' : 'text';
+      fastify.log.info(`[Voice Parse] Processing ${inputDesc} input via phi-parser (single request)...`);
+
+      const result = await resolveAndExecuteCompletion({
         model: 'phi-parser',
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Parse these expenses: "${transcript}"` }
+          { role: 'user', content: userContent }
         ],
         temperature: 0,
         response_format: { type: 'json_object' }
       }, allowedAliases, request);
 
-      const content = parsingResult.choices[0]?.message?.content || '{}';
+      const content = result.choices[0]?.message?.content || '{}';
       let parsedResponse: { items?: any[] };
       
       try {
@@ -208,7 +165,6 @@ Rules:
 
       const items = parsedResponse.items || [];
       
-      // Post-process items to ensure type safety
       const finalItems = items.map(item => ({
         merchant: item.merchant || 'Unknown',
         category_id: typeof item.category_id === 'string' ? item.category_id : null,
@@ -222,22 +178,22 @@ Rules:
         data: {
           items: finalItems,
           diagnostics: {
-            transcription_used: transcriptionUsed,
+            input_type: body.input_type,
             model: 'phi-parser',
-            raw_transcript: transcript
+            single_request: true
           }
         }
       };
 
     } catch (error: any) {
-      fastify.log.error(error, `[Voice Parse] Parsing pipeline failed.`);
+      fastify.log.error(error, `[Voice Parse] Parsing failed.`);
       const status = error.statusCode || 502;
       const errorCode = error.code || 'voice_parse_failed';
       return reply.status(status).send({
         success: false,
         error: {
           code: errorCode,
-          message: error.message || 'Voice parsing pipeline failed.',
+          message: error.message || 'Voice parsing failed.',
           details: error.details || undefined
         }
       });

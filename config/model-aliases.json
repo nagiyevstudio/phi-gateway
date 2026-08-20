@@ -3,27 +3,15 @@
   "model_aliases": {
     "phi-parser": {
       "enabled": true,
-      "target_model_key": "mistral_large_latest",
-      "fallback_model_keys": ["openai_gpt54_mini", "alibaba_qwen_plus"],
+      "target_model_key": "google_gemini25_flash",
+      "fallback_model_keys": ["openai_gpt54_nano"],
       "required_capabilities": ["text_input", "text_output", "structured_output"]
-    },
-    "phi-classifier": {
-      "enabled": true,
-      "target_model_key": "mistral_small_latest",
-      "fallback_model_keys": ["openrouter_deepseek_v4_flash_free", "openai_gpt54_nano", "zai_glm47_flash", "alibaba_qwen_flash"],
-      "required_capabilities": ["text_input", "text_output", "structured_output", "fast"]
     },
     "phi-vision": {
       "enabled": true,
-      "target_model_key": "alibaba_qwen_flash",
-      "fallback_model_keys": ["openai_gpt54_mini", "mistral_large_latest"],
-      "required_capabilities": ["text_input", "image_input", "text_output", "structured_output"]
-    },
-    "phi-audio-transcriber": {
-      "enabled": true,
       "target_model_key": "google_gemini25_flash",
-      "fallback_model_keys": ["google_gemini25_pro", "google_gemini20_flash"],
-      "required_capabilities": ["audio_input", "text_output", "transcription"]
+      "fallback_model_keys": ["openai_gpt54_nano"],
+      "required_capabilities": ["text_input", "image_input", "text_output", "structured_output"]
     }
   }
 }

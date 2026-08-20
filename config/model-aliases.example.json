@@ -3,28 +3,15 @@
   "model_aliases": {
     "phi-parser": {
       "enabled": true,
-      "target_model_key": "openrouter_qwen_reasoning",
-      "fallback_model_keys": ["openrouter_claude_sonnet", "zai_glm51"],
+      "target_model_key": "google_gemini_flash_lite",
+      "fallback_model_keys": ["openrouter_qwen_reasoning"],
       "required_capabilities": ["text_input", "text_output", "structured_output"]
-    },
-    "phi-classifier": {
-      "enabled": true,
-      "target_model_key": "openai_gpt54_nano",
-      "fallback_model_keys": ["zai_free", "alibaba_qwen_flash"],
-      "required_capabilities": ["text_input", "text_output", "structured_output", "fast"]
     },
     "phi-vision": {
       "enabled": true,
-      "target_model_key": "openrouter_qwen_reasoning",
-      "fallback_model_keys": ["openrouter_claude_sonnet", "moonshot_kimi"],
-      "required_capabilities": ["text_input", "image_input", "text_output", "structured_output"]
-    },
-    "phi-audio-transcriber": {
-      "enabled": true,
       "target_model_key": "google_gemini_flash_lite",
-      "fallback_model_keys": ["gemini_flash_latest", "openai_gpt4o_transcribe"],
-      "required_capabilities": ["audio_input", "text_output", "transcription"]
+      "fallback_model_keys": ["openrouter_qwen_reasoning"],
+      "required_capabilities": ["text_input", "image_input", "text_output", "structured_output"]
     }
   }
 }
-
