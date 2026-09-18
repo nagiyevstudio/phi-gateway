@@ -302,9 +302,16 @@ export const adminRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) 
       return { success: false, error: { code: 'provider_disabled', message: `Provider '${modelInfo.provider}' is disabled.` } };
     }
 
-    const apiKey = process.env[providerInfo.api_key_env];
+    let apiKey = process.env[providerInfo.api_key_env];
+    if (!apiKey && providerInfo.api_key_env) {
+      const trimmed = providerInfo.api_key_env.trim();
+      if (trimmed.length > 15 && !trimmed.includes(' ')) {
+        apiKey = trimmed;
+      }
+    }
+
     if (!apiKey) {
-      return { success: false, error: { code: 'api_key_missing', message: `API key '${providerInfo.api_key_env}' is not set.` } };
+      return { success: false, error: { code: 'api_key_missing', message: `API key '${providerInfo.api_key_env}' is not set in environment.` } };
     }
 
     const testPayload = {
@@ -312,7 +319,7 @@ export const adminRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) 
       messages: [
         { role: 'user', content: 'Reply with exactly: "PHI Gateway test OK"' }
       ],
-      max_tokens: 50,
+      max_tokens: 300,
       temperature: 0
     };
 
@@ -343,7 +350,8 @@ export const adminRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) 
       const diff = process.hrtime(startTime);
       const durationMs = Math.round(diff[0] * 1e3 + diff[1] * 1e-6);
 
-      const content = result?.choices?.[0]?.message?.content || result?.content || JSON.stringify(result).slice(0, 200);
+      const msg = result?.choices?.[0]?.message;
+      const content = msg?.content || msg?.reasoning_content || result?.content || JSON.stringify(result).slice(0, 200);
 
       return {
         success: true,

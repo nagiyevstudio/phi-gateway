@@ -447,8 +447,9 @@
           <input type="url" id="providerBaseUrlInput" required class="glass-input w-full px-3 py-2 rounded-lg text-sm" placeholder="https://api.example.com/v1">
         </div>
         <div class="space-y-1">
-          <label class="text-xs text-gray-400 font-medium">API Key Environment Variable Name</label>
-          <input type="text" id="providerKeyEnvInput" required class="glass-input w-full px-3 py-2 rounded-lg text-sm" placeholder="e.g. DEEPSEEK_API_KEY">
+          <label class="text-xs text-gray-400 font-medium">API Key Env Variable Name or Raw Key</label>
+          <input type="text" id="providerKeyEnvInput" required class="glass-input w-full px-3 py-2 rounded-lg text-sm" placeholder="e.g. GEMINI_API_KEY or paste raw key">
+          <p class="text-[10px] text-gray-500">Env variable name (managed in Upstream Keys) or raw API key directly.</p>
         </div>
         <div class="space-y-1">
           <label class="text-xs text-gray-400 font-medium">Timeout (ms)</label>

@@ -107,8 +107,15 @@ export async function resolveAndExecuteCompletion(
       continue;
     }
 
-    // Resolve API key from environment
-    const apiKey = process.env[providerInfo.api_key_env];
+    // Resolve API key from environment, with fallback to direct key string if user pasted raw key
+    let apiKey = process.env[providerInfo.api_key_env];
+    if (!apiKey && providerInfo.api_key_env) {
+      const trimmed = providerInfo.api_key_env.trim();
+      if (trimmed.length > 15 && !trimmed.includes(' ')) {
+        apiKey = trimmed;
+      }
+    }
+
     if (!apiKey) {
       console.error(`[Resolver] API key environment variable '${providerInfo.api_key_env}' is not set for provider '${modelInfo.provider}'. Skipping model '${modelKey}'.`);
       attemptedModels.push({
