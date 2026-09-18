@@ -52,45 +52,78 @@ export async function receiptRoutes(fastify: FastifyInstance) {
 
     const today = new Date().toISOString().slice(0, 10);
 
-    const systemPrompt = `You are a precise receipt extraction agent.
-Analyze the provided receipt image and extract ALL receipt details.
+    const systemPrompt = `You are a financial image extraction agent for the PHI expense tracker app.
+Analyze the provided image and extract ALL financial transactions or receipt items.
 
-Available categories (use ONLY from this list):
+The image can be:
+1. A BANKING APP SCREENSHOT or account transaction history (e.g. Leobank, Birbank, ABB, m10, Kaspi, Tinkoff, Apple Pay, etc.) showing multiple payments/expenses.
+2. A STORE RECEIPT (e-Kassa, fiscal check, supermarket slip) with line items.
+3. A single transaction confirmation, transfer receipt, or invoice.
+
+Available expense categories (use ONLY these UUIDs):
 ${JSON.stringify(body.categories, null, 2)}
 
-Pre-learned category rules (item name → category):
+Pre-learned category rules (pattern → category_id):
 ${JSON.stringify(body.category_rules, null, 2)}
 
-Return ONLY a valid JSON object. No markdown. No code blocks. No explanation.
-
-Output format:
+## OUTPUT FORMAT (strict JSON, no markdown, no code blocks):
 {
-  "merchant": "Store Name",
+  "merchant": "Store Name or Bank/App Name",
   "date": "YYYY-MM-DD HH:mm:ss",
-  "total": 4.16,
+  "total": 45.60,
   "currency": "AZN",
-  "payment_method": "cash",
+  "payment_method": "card",
   "items": [
     {
-      "raw_name": "COCA COLA 2L",
+      "raw_name": "Merchant, Service or Item name",
       "quantity": 1,
-      "unit_price": 1.50,
-      "line_total": 1.50,
-      "category_id": "uuid or null"
+      "unit_price": 7.50,
+      "line_total": 7.50,
+      "category_id": "uuid from list or null",
+      "date": "YYYY-MM-DD"
     }
   ]
 }
 
-Priority rules:
-1. line_total — MOST IMPORTANT. Price in MAJOR units as float: 4.16 AZN stays 4.16, not 416.
-2. category_id — SECOND MOST IMPORTANT. Assign using categories list and rules above. If unsure, use null. Do NOT invent categories.
-3. total — receipt total. Sum of all items.
-4. date — "YYYY-MM-DD HH:mm:ss". No time = "12:00:00". No date = "${today} 12:00:00".
-5. merchant — store name. Default "Unknown" if not visible.
-6. Extract ALL items. Do not skip any, even 0.07 AZN for a bag.
-7. Currency defaults to "AZN". Payment method defaults to "cash".
-8. Bank app screenshots: each transaction is a separate item.
-9. Return ONLY the JSON object, nothing else.`;
+## CRITICAL EXTRACTION RULES:
+
+1. **BANK APP SCREENSHOTS (MULTIPLE PAYMENTS)**:
+   - If the image displays a banking app screen with multiple transactions:
+     - You MUST extract EVERY SINGLE visible transaction as a separate entry in the "items" array!
+     - If 5 transactions are visible on screen, you MUST return 5 separate items. NEVER combine or collapse them into one single item!
+     - "raw_name": The exact merchant, service, recipient, or payment name written for that transaction (e.g. "Starbucks", "Bolt", "Bravo Supermarket", "Yango Taxi", "Trendyol", "M10").
+     - "line_total": The transaction amount as a positive float in MAJOR units (e.g. 7.50, NOT 750).
+     - "quantity": 1.
+     - "unit_price": Same as line_total.
+     - "date": The specific date of this transaction in "YYYY-MM-DD" format if visible on the item line or under a date header (e.g., "18 Сен" -> "${today.slice(0, 4)}-09-18", "Bugün"/"Today" -> "${today}", "Dün"/"Yesterday" -> calculate yesterday). If only time or no date is visible for this item, use null.
+     - "category_id": Match to the best category UUID from the available list based on what was bought, or null if uncertain.
+     - "merchant": Name of the bank/app (e.g. "Leobank", "Birbank", "Bank App") or "Банк".
+     - "total": Sum of all extracted transactions.
+     - "payment_method": "card".
+
+2. **STORE RECEIPTS**:
+   - Each purchased product/line item is a separate entry in the "items" array.
+   - "merchant": The store/shop name at the top of the receipt.
+   - "total": Receipt total (Cəmi/Итого).
+   - "date": Receipt date & time in "YYYY-MM-DD HH:mm:ss" if visible, or "${today} 12:00:00".
+   - "payment_method": "cash" or "card" as indicated on receipt (default "cash").
+
+3. **PRICES & AMOUNTS**:
+   - All prices MUST be in MAJOR units as float: 4.16 AZN is 4.16, 12 AZN is 12.00, 0.50 AZN is 0.50. Never use minor units/kopecks/cents.
+   - "total": Sum of all items in the array.
+
+4. **CATEGORIES**:
+   - Use ONLY UUIDs from the provided categories list.
+   - If pre-learned rules match an item, prefer that category.
+   - If you are not confident which category matches, set "category_id": null. Do NOT guess randomly. NEVER invent fake category IDs.
+
+5. **EXTRACT ALL**:
+   - Do NOT skip any visible transaction or item, even small ones (e.g. 0.10 AZN).
+
+6. **LANGUAGE**:
+   - Text may be in Azerbaijani, Russian, English, or Turkish. Parse all correctly.
+
+7. Return ONLY the JSON object, nothing else.`;
 
     try {
       fastify.log.info(`[Receipt Analyze] Sending image to phi-vision (single request with categories)...`);
@@ -156,6 +189,7 @@ Priority rules:
           unit_price: typeof item.unit_price === 'number' ? item.unit_price : (item.line_total || 0),
           line_total: typeof item.line_total === 'number' ? item.line_total : 0,
           category_id: categoryId,
+          date: item.date || null,
           confidence: typeof item.confidence === 'number' ? item.confidence : 0.8
         };
       });
