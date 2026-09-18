@@ -91,6 +91,7 @@ ${JSON.stringify(body.category_rules, null, 2)}
    - If the image displays a banking app screen with multiple transactions:
      - You MUST extract EVERY SINGLE visible transaction as a separate entry in the "items" array!
      - If 5 transactions are visible on screen, you MUST return 5 separate items. NEVER combine or collapse them into one single item!
+     - Focus on expense/outgoing transactions (purchases, card payments, bills, service fees).
      - "raw_name": The exact merchant, service, recipient, or payment name written for that transaction (e.g. "Starbucks", "Bolt", "Bravo Supermarket", "Yango Taxi", "Trendyol", "M10").
      - "line_total": The transaction amount as a positive float in MAJOR units (e.g. 7.50, NOT 750).
      - "quantity": 1.
@@ -135,7 +136,7 @@ ${JSON.stringify(body.category_rules, null, 2)}
           {
             role: 'user',
             content: [
-              { type: 'text', text: 'Extract all receipt details and assign categories to each item.' },
+              { type: 'text', text: 'Extract all financial transactions or receipt items and assign categories to each item.' },
               {
                 type: 'image_url',
                 image_url: {
